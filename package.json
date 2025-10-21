@@ -1,0 +1,61 @@
+{
+    "name": "thinqconnect",
+    "version": "0.9.8-beta",
+    "description": "ThinQ Connect Open SDK Nodejs",
+    "dependencies": {
+        "aws-crt": "^1.21.3",
+        "aws-iot-device-sdk-v2": "^1.19.5",
+        "axios": "^1.12.2",
+        "glob": "^10.3.10",
+        "lodash": "^4.17.21",
+        "node-forge": "^1.3.1",
+        "urlsafe-base64": "^1.0.0",
+        "uuid": "^11.0.3"
+    },
+    "devDependencies": {
+        "@types/glob": "^8.1.0",
+        "@types/lodash": "^4.17.7",
+        "@types/urlsafe-base64": "^1.0.31",
+        "@types/uuid": "^10.0.0",
+        "@types/node-forge": "^1.3.11",
+        "@typescript-eslint/eslint-plugin": "5.3.0",
+        "@typescript-eslint/parser": "5.3.0",
+        "eslint": "8.13.0",
+        "rimraf": "^3.0.2",
+        "typescript": "^5.5.4"
+    },
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "files": [
+        "dist/**/*.js",
+        "dist/**/*.d.ts",
+        "dist/**/*.js.map",
+        "!dist/tests/**/*",
+        "README.md",
+        "LICENSE"
+    ],
+    "scripts": {
+        "test": "./test_all_devices.sh",
+        "build": "rimraf ./dist && tsc",
+        "prepublishOnly": "npm run build",
+        "prepack": "npm run build"
+    },
+    "engines": {
+        "node": ">=16.0.0"
+    },
+    "keywords": [
+        "lg",
+        "thinq",
+        "iot",
+        "sdk",
+        "api",
+        "typescript",
+        "nodejs"
+    ],
+    "author": "ThinQConnect <thinq-connect@lge.com>",
+    "license": "Apache-2.0",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/thinq-connect/jsthinqconnect.git"
+    }
+}
