@@ -1,0 +1,49 @@
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Node.js dependencies
+node_modules/
+jspm_packages/
+
+# TypeScript build info
+*.tsbuildinfo
+
+# TypeScript typings
+typings/
+
+# VSCode settings
+.vscode/
+*.code-workspace
+launch.json
+
+# Yarn
+.yarn/*
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+# If NOT using Zero-installs, comment the following line:
+!.yarn/cache
+# If using PnP, uncomment the following line:
+# .pnp.*
+
+# Package manager lock files
+package-lock.json
+yarn.lock
+
+# Build output
+dist/
+
+# Misc
+.env
+
+# Development files
+*.log
+test_all_devices.sh
+tests/
+__tests__/
+coverage/
+.pre-commit-config.yaml
+
