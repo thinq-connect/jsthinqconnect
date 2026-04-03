@@ -7,16 +7,16 @@ This SDK is designed to facilitate seamless integration with a range of LGE appl
 
 # Notice
 
--   Please note that any unofficial ThinQ Projects(especially reverse-engineered client) are subject to unannounced changes or unavailability in 2025.
+-   Since 2025, unofficial ThinQ projects—particularly reverse-engineered clients—may change without notice or become unavailable.
 
-# Features Roadmap - 2025
+# Key Features
 
-### Devices
+-   Profile Retrieval: Access detailed profiles of 27 different home appliances.
+-   Device Management: Query and retrieve lists of connected devices and their statuses.
+-   Device Control: Execute commands to control your appliances directly through the API.
+-   Event Handling: Utilize AWS IoT Core for MQTT connections to receive device events and push notifications via callbacks.
 
--   Ventilator
--   ShoeCare
--   ShoeCase
--   TBD
+This SDK is an essential tool for developers looking to integrate ThinQ Connect capabilities into their applications, ensuring efficient and reliable smart home management.
 
 # Installation and usage
 
@@ -217,27 +217,32 @@ For detailed information on Device Properties, please refer to the following pag
 
 ### Main
 
-|     | resources          | properties               |
-| --- | ------------------ | ------------------------ |
-| 1   | airPurifierJobMode | currentJobMode           |
-| 2   | airPurifierJobMode | personalizationMode      |
-| 3   | operation          | airPurifierOperationMode |
-| 4   | timer              | absoluteHourToStart      |
-| 5   | timer              | absoluteMinuteToStart    |
-| 6   | timer              | absoluteHourToStop       |
-| 7   | timer              | absoluteMinuteToStop     |
-| 8   | airFlow            | windStrength             |
-| 9   | airQualitySensor   | monitoringEnabled        |
-| 10  | airQualitySensor   | pm1                      |
-| 11  | airQualitySensor   | pm2                      |
-| 12  | airQualitySensor   | pm10                     |
-| 13  | airQualitySensor   | odor                     |
-| 14  | airQualitySensor   | odorLevel                |
-| 15  | airQualitySensor   | humidity                 |
-| 16  | airQualitySensor   | totalPollution           |
-| 17  | airQualitySensor   | totalPollutionLevel      |
-| 18  | filterInfo         | topFilterRemainPercent   |
-| 19  | filterInfo         | filterRemainPercent      |
+|     | resources          | properties                     |
+| --- | ------------------ | ------------------------------ |
+| 1   | airPurifierJobMode | currentJobMode                 |
+| 2   | airPurifierJobMode | personalizationMode            |
+| 3   | operation          | airPurifierOperationMode       |
+| 4   | timer              | absoluteHourToStart            |
+| 5   | timer              | absoluteMinuteToStart          |
+| 6   | timer              | absoluteHourToStop             |
+| 7   | timer              | absoluteMinuteToStop           |
+| 8   | sleepTimer         | sleepTimerRelativeHourToStop   |
+| 9   | sleepTimer         | sleepTimerRelativeMinuteToStop |
+| 10  | airFlow            | windStrength                   |
+| 11  | airQualitySensor   | monitoringEnabled              |
+| 12  | airQualitySensor   | pm1                            |
+| 13  | airQualitySensor   | pm1Level                       |
+| 14  | airQualitySensor   | pm2                            |
+| 15  | airQualitySensor   | pm2Level                       |
+| 16  | airQualitySensor   | pm10                           |
+| 17  | airQualitySensor   | pm10Level                      |
+| 18  | airQualitySensor   | odor                           |
+| 19  | airQualitySensor   | odorLevel                      |
+| 20  | airQualitySensor   | humidity                       |
+| 21  | airQualitySensor   | totalPollution                 |
+| 22  | airQualitySensor   | totalPollutionLevel            |
+| 23  | filterInfo         | filterRemainPercent            |
+| 24  | filterInfo         | topFilterRemainPercent         |
 
 ### DEVICE_AIR_PURIFIER_FAN
 
@@ -277,7 +282,7 @@ For detailed information on Device Properties, please refer to the following pag
 |     | resources | properties              |
 | --- | --------- | ----------------------- |
 | 1   | airFlow   | windStrength            |
-| 2   | operation | ceilingFanOperationMode |
+| 2   | operation | ceilingfanOperationMode |
 
 ### DEVICE_COOKTOP
 

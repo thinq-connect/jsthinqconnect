@@ -3,14 +3,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import _ from "lodash";
-import { ConnectBaseDevice, ConnectDeviceProfile } from "./ConnectDevice";
+import {
+    ConnectBaseDevice,
+    ConnectDeviceProfile,
+    ConnectDeviceProfileDefinition,
+    createConnectDeviceProfile,
+} from "./ConnectDevice";
 import {
     ResourceMap,
     ProfileMap,
     CustomProperties,
     LocationMap,
 } from "../types/Resources";
+import { DynamicObjectOrStringArray } from "../types/Devices";
 import { ThinQApi, ThinQApiResponse } from "../ThinQAPI";
 
 export class AirPurifierFanProfile extends ConnectDeviceProfile {
@@ -72,6 +77,26 @@ export class AirPurifierFanProfile extends ConnectDeviceProfile {
     }
 }
 
+export const AIR_PURIFIER_FAN_RESOURCE_MAP: ResourceMap =
+    AirPurifierFanProfile._RESOURCE_MAP;
+export const AIR_PURIFIER_FAN_PROFILE_MAP: ProfileMap =
+    AirPurifierFanProfile._PROFILE;
+export const AIR_PURIFIER_FAN_CUSTOM_PROPERTIES: CustomProperties =
+    AirPurifierFanProfile._CUSTOM_PROPERTIES;
+export const AIR_PURIFIER_FAN_LOCATION_MAP: LocationMap =
+    AirPurifierFanProfile._LOCATION_MAP;
+export const AIR_PURIFIER_FAN_PROFILE_DEFINITION: ConnectDeviceProfileDefinition =
+    {
+        resourceMap: AIR_PURIFIER_FAN_RESOURCE_MAP,
+        profileMap: AIR_PURIFIER_FAN_PROFILE_MAP,
+        locationMap: AIR_PURIFIER_FAN_LOCATION_MAP,
+        customProperties: AIR_PURIFIER_FAN_CUSTOM_PROPERTIES,
+    };
+export const createAirPurifierFanProfile = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+): ConnectDeviceProfile =>
+    createConnectDeviceProfile(profile, AIR_PURIFIER_FAN_PROFILE_DEFINITION);
+
 export class AirPurifierFanDevice extends ConnectBaseDevice {
     static _CUSTOM_SET_PROPERTY_NAME = {
         absoluteHourToStart: "absoluteTimeToStart",
@@ -89,7 +114,7 @@ export class AirPurifierFanDevice extends ConnectBaseDevice {
         modelName: string,
         alias: string,
         reportable: boolean,
-        profile: Record<string, any>,
+        profile: Record<string, DynamicObjectOrStringArray>,
         energyProfile?: Record<string, unknown>,
     ) {
         super(
@@ -99,7 +124,7 @@ export class AirPurifierFanDevice extends ConnectBaseDevice {
             modelName,
             alias,
             reportable,
-            new AirPurifierFanProfile(profile),
+            createAirPurifierFanProfile(profile),
             AirPurifierFanDevice._CUSTOM_SET_PROPERTY_NAME,
             undefined,
             energyProfile,

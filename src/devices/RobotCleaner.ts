@@ -3,14 +3,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import _ from "lodash";
-import { ConnectBaseDevice, ConnectDeviceProfile } from "./ConnectDevice";
+import {
+    ConnectBaseDevice,
+    ConnectDeviceProfile,
+    ConnectDeviceProfileDefinition,
+    createConnectDeviceProfile,
+} from "./ConnectDevice";
 import {
     ResourceMap,
     ProfileMap,
     CustomProperties,
     LocationMap,
 } from "../types/Resources";
+import { DynamicObjectOrStringArray } from "../types/Devices";
 import { ThinQApi, ThinQApiResponse } from "../ThinQAPI";
 
 export class RobotCleanerProfile extends ConnectDeviceProfile {
@@ -47,6 +52,26 @@ export class RobotCleanerProfile extends ConnectDeviceProfile {
     }
 }
 
+export const ROBOT_CLEANER_RESOURCE_MAP: ResourceMap =
+    RobotCleanerProfile._RESOURCE_MAP;
+export const ROBOT_CLEANER_PROFILE_MAP: ProfileMap =
+    RobotCleanerProfile._PROFILE;
+export const ROBOT_CLEANER_CUSTOM_PROPERTIES: CustomProperties =
+    RobotCleanerProfile._CUSTOM_PROPERTIES;
+export const ROBOT_CLEANER_LOCATION_MAP: LocationMap =
+    RobotCleanerProfile._LOCATION_MAP;
+export const ROBOT_CLEANER_PROFILE_DEFINITION: ConnectDeviceProfileDefinition =
+    {
+        resourceMap: ROBOT_CLEANER_RESOURCE_MAP,
+        profileMap: ROBOT_CLEANER_PROFILE_MAP,
+        locationMap: ROBOT_CLEANER_LOCATION_MAP,
+        customProperties: ROBOT_CLEANER_CUSTOM_PROPERTIES,
+    };
+export const createRobotCleanerProfile = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+): ConnectDeviceProfile =>
+    createConnectDeviceProfile(profile, ROBOT_CLEANER_PROFILE_DEFINITION);
+
 export class RobotCleanerDevice extends ConnectBaseDevice {
     static _CUSTOM_SET_PROPERTY_NAME = {
         absoluteHourToStart: "absoluteTimeToStart",
@@ -59,7 +84,7 @@ export class RobotCleanerDevice extends ConnectBaseDevice {
         modelName: string,
         alias: string,
         reportable: boolean,
-        profile: Record<string, any>,
+        profile: Record<string, DynamicObjectOrStringArray>,
         energyProfile?: Record<string, unknown>,
     ) {
         super(
@@ -69,7 +94,7 @@ export class RobotCleanerDevice extends ConnectBaseDevice {
             modelName,
             alias,
             reportable,
-            new RobotCleanerProfile(profile),
+            createRobotCleanerProfile(profile),
             RobotCleanerDevice._CUSTOM_SET_PROPERTY_NAME,
             undefined,
             energyProfile,

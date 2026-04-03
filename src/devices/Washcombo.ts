@@ -4,61 +4,77 @@
  */
 
 import _ from "lodash";
-import { ConnectDeviceProfile } from "./ConnectDevice";
+import {
+    ConnectDeviceProfile,
+    ConnectDeviceProfileDefinition,
+} from "./ConnectDevice";
 import {
     ResourceMap,
     ProfileMap,
     CustomProperties,
     LocationMap,
 } from "../types/Resources";
+import { DynamicObjectOrStringArray } from "../types/Devices";
 import { WasherSubDevice } from "./Washer";
 import { ThinQApi, ThinQApiResponse } from "../ThinQAPI";
 
-export class WashcomboProfile extends ConnectDeviceProfile {
-    static _RESOURCE_MAP: ResourceMap = {
-        runState: "runState",
-        operation: "operation",
-        mode: "mode",
-        remoteControlEnable: "remoteControlEnable",
-        timer: "timer",
-        detergent: "detergent",
-        cycle: "cycle",
-    };
+export const WASHCOMBO_RESOURCE_MAP: ResourceMap = {
+    runState: "runState",
+    operation: "operation",
+    mode: "mode",
+    remoteControlEnable: "remoteControlEnable",
+    timer: "timer",
+    detergent: "detergent",
+    cycle: "cycle",
+};
 
-    static _PROFILE: ProfileMap = {
-        runState: { currentState: "currentState" },
-        operation: { washerOperationMode: "washerOperationMode" },
-        mode: {
-            washerMode: "washerMode",
-        },
-        remoteControlEnable: { remoteControlEnabled: "remoteControlEnabled" },
-        timer: {
-            remainHour: "remainHour",
-            remainMinute: "remainMinute",
-            totalHour: "totalHour",
-            totalMinute: "totalMinute",
-            relativeHourToStop: "relativeHourToStop",
-            relativeMinuteToStop: "relativeMinuteToStop",
-            relativeHourToStart: "relativeHourToStart",
-            relativeMinuteToStart: "relativeMinuteToStart",
-        },
-        detergent: { detergentSetting: "detergentSetting" },
-        cycle: { cycleCount: "cycleCount" },
-    };
-    static _CUSTOM_PROPERTIES: CustomProperties = [];
-    static _LOCATION_MAP: LocationMap = {};
+export const WASHCOMBO_PROFILE_MAP: ProfileMap = {
+    runState: { currentState: "currentState" },
+    operation: { washerOperationMode: "washerOperationMode" },
+    mode: {
+        washerMode: "washerMode",
+    },
+    remoteControlEnable: { remoteControlEnabled: "remoteControlEnabled" },
+    timer: {
+        remainHour: "remainHour",
+        remainMinute: "remainMinute",
+        totalHour: "totalHour",
+        totalMinute: "totalMinute",
+        relativeHourToStop: "relativeHourToStop",
+        relativeMinuteToStop: "relativeMinuteToStop",
+        relativeHourToStart: "relativeHourToStart",
+        relativeMinuteToStart: "relativeMinuteToStart",
+    },
+    detergent: { detergentSetting: "detergentSetting" },
+    cycle: { cycleCount: "cycleCount" },
+};
+export const WASHCOMBO_CUSTOM_PROPERTIES: CustomProperties = [];
+export const WASHCOMBO_LOCATION_MAP: LocationMap = {};
+
+export const WASHCOMBO_PROFILE_DEFINITION: ConnectDeviceProfileDefinition = {
+    resourceMap: WASHCOMBO_RESOURCE_MAP,
+    profileMap: WASHCOMBO_PROFILE_MAP,
+    locationMap: WASHCOMBO_LOCATION_MAP,
+    customProperties: WASHCOMBO_CUSTOM_PROPERTIES,
+};
+
+export class WashcomboProfile extends ConnectDeviceProfile {
+    static _RESOURCE_MAP: ResourceMap = WASHCOMBO_RESOURCE_MAP;
+    static _PROFILE: ProfileMap = WASHCOMBO_PROFILE_MAP;
+    static _CUSTOM_PROPERTIES: CustomProperties = WASHCOMBO_CUSTOM_PROPERTIES;
+    static _LOCATION_MAP: LocationMap = WASHCOMBO_LOCATION_MAP;
 
     constructor(
-        profile: Record<string, any>,
+        profile: Record<string, DynamicObjectOrStringArray>,
         locationName: string | null = null,
         useNotification = false,
     ) {
         super(
             profile,
-            WashcomboProfile._RESOURCE_MAP,
-            WashcomboProfile._PROFILE,
-            WashcomboProfile._LOCATION_MAP,
-            WashcomboProfile._CUSTOM_PROPERTIES,
+            WASHCOMBO_PROFILE_DEFINITION.resourceMap,
+            WASHCOMBO_PROFILE_DEFINITION.profileMap,
+            WASHCOMBO_PROFILE_DEFINITION.locationMap,
+            WASHCOMBO_PROFILE_DEFINITION.customProperties,
             false,
             false,
             locationName,
@@ -84,6 +100,14 @@ export class WashcomboProfile extends ConnectDeviceProfile {
     }
 }
 
+export const createWashcomboProfile = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+    locationName: string | null = null,
+    useNotification = false,
+): ConnectDeviceProfile => {
+    return new WashcomboProfile(profile, locationName, useNotification);
+};
+
 export class WashcomboDevice extends WasherSubDevice {
     constructor(
         thinqApi: ThinQApi,
@@ -93,12 +117,12 @@ export class WashcomboDevice extends WasherSubDevice {
         alias: string,
         groupId: string,
         reportable: boolean,
-        profile: Record<string, any>,
+        profile: Record<string, DynamicObjectOrStringArray>,
         location: string,
         energyProfile?: Record<string, unknown>,
     ) {
         super(
-            new WashcomboProfile(profile, location, true),
+            createWashcomboProfile(profile, location, true),
             location,
             thinqApi,
             deviceId,

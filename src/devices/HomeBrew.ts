@@ -3,14 +3,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import _ from "lodash";
-import { ConnectBaseDevice, ConnectDeviceProfile } from "./ConnectDevice";
+import {
+    ConnectBaseDevice,
+    ConnectDeviceProfile,
+    ConnectDeviceProfileDefinition,
+    createConnectDeviceProfile,
+} from "./ConnectDevice";
 import {
     ResourceMap,
     ProfileMap,
     CustomProperties,
     LocationMap,
 } from "../types/Resources";
+import { DynamicObjectOrStringArray } from "../types/Devices";
 import { ThinQApi } from "../ThinQAPI";
 
 export class HomeBrewProfile extends ConnectDeviceProfile {
@@ -52,6 +57,24 @@ export class HomeBrewProfile extends ConnectDeviceProfile {
     }
 }
 
+export const HOME_BREW_RESOURCE_MAP: ResourceMap =
+    HomeBrewProfile._RESOURCE_MAP;
+export const HOME_BREW_PROFILE_MAP: ProfileMap = HomeBrewProfile._PROFILE;
+export const HOME_BREW_CUSTOM_PROPERTIES: CustomProperties =
+    HomeBrewProfile._CUSTOM_PROPERTIES;
+export const HOME_BREW_LOCATION_MAP: LocationMap =
+    HomeBrewProfile._LOCATION_MAP;
+export const HOME_BREW_PROFILE_DEFINITION: ConnectDeviceProfileDefinition = {
+    resourceMap: HOME_BREW_RESOURCE_MAP,
+    profileMap: HOME_BREW_PROFILE_MAP,
+    locationMap: HOME_BREW_LOCATION_MAP,
+    customProperties: HOME_BREW_CUSTOM_PROPERTIES,
+};
+export const createHomeBrewProfile = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+): ConnectDeviceProfile =>
+    createConnectDeviceProfile(profile, HOME_BREW_PROFILE_DEFINITION);
+
 export class HomeBrewDevice extends ConnectBaseDevice {
     constructor(
         thinqApi: ThinQApi,
@@ -60,7 +83,7 @@ export class HomeBrewDevice extends ConnectBaseDevice {
         modelName: string,
         alias: string,
         reportable: boolean,
-        profile: Record<string, any>,
+        profile: Record<string, DynamicObjectOrStringArray>,
         energyProfile?: Record<string, unknown>,
     ) {
         super(
@@ -70,7 +93,7 @@ export class HomeBrewDevice extends ConnectBaseDevice {
             modelName,
             alias,
             reportable,
-            new HomeBrewProfile(profile),
+            createHomeBrewProfile(profile),
             undefined,
             undefined,
             energyProfile,

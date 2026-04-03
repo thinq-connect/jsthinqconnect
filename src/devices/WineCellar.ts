@@ -8,8 +8,10 @@ import {
     ConnectMainDevice,
     ConnectSubDevice,
     ConnectDeviceProfile,
+    ConnectDeviceProfileDefinition,
     READABILITY,
     WRITABILITY,
+    CustomResourcePropertiesHandler,
 } from "./ConnectDevice.js";
 import {
     ResourceMap,
@@ -24,99 +26,111 @@ import {
 } from "../types/Devices.js";
 import { ThinQApi, ThinQApiResponse } from "../ThinQAPI";
 
+export const WINE_CELLAR_RESOURCE_MAP: ResourceMap = { operation: "operation" };
+export const WINE_CELLAR_PROFILE_MAP: ProfileMap = {
+    operation: {
+        lightBrightness: "lightBrightness",
+        optimalHumidity: "optimalHumidity",
+        sabbathMode: "sabbathMode",
+        lightStatus: "lightStatus",
+    },
+};
+export const WINE_CELLAR_LOCATION_MAP: LocationMap = {
+    WINE_UPPER: "upper",
+    WINE_MIDDLE: "middle",
+    WINE_LOWER: "lower",
+};
+export const WINE_CELLAR_CUSTOM_PROPERTIES: CustomProperties = [
+    "temperatureInUnits",
+];
+
+type WineCellarPropertyEntry = Record<string, unknown>;
+type WineCellarLocationProperties = Record<string, Record<string, string[]>>;
+
+const getWineCellarTemperatureEntries = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+): WineCellarPropertyEntry[] => {
+    const temperatureEntries = _.get(
+        profile,
+        "property.temperatureInUnits",
+        [],
+    );
+    return Array.isArray(temperatureEntries)
+        ? (temperatureEntries as WineCellarPropertyEntry[])
+        : [];
+};
+
+const getWineCellarLocationName = (
+    locationProperty: WineCellarPropertyEntry,
+): string | undefined => {
+    return _.get(locationProperty, "locationName") as string | undefined;
+};
+
+const initializeWineCellarLocationProfiles = (
+    mainProfile: WineCellarProfile,
+    profile: Record<string, DynamicObjectOrStringArray>,
+): void => {
+    const locationProperties: WineCellarLocationProperties = {};
+    for (const locationProperty of getWineCellarTemperatureEntries(profile)) {
+        const locationName = getWineCellarLocationName(locationProperty);
+        if (!locationName || !(locationName in WINE_CELLAR_LOCATION_MAP)) {
+            continue;
+        }
+        const attrKey = WINE_CELLAR_LOCATION_MAP[locationName];
+        const subProfile = createWineCellarSubProfile(profile, locationName);
+        mainProfile[attrKey] = subProfile;
+        locationProperties[attrKey] = subProfile.properties;
+    }
+    mainProfile._locationProperties = locationProperties;
+};
+
 export class WineCellarProfile extends ConnectDeviceProfile {
-    static _RESOURCE_MAP: ResourceMap = { operation: "operation" };
-    static _PROFILE: ProfileMap = {
-        operation: {
-            lightBrightness: "lightBrightness",
-            optimalHumidity: "optimalHumidity",
-            sabbathMode: "sabbathMode",
-            lightStatus: "lightStatus",
-        },
-    };
-    static _LOCATION_MAP: LocationMap = {
-        WINE_UPPER: "upper",
-        WINE_MIDDLE: "middle",
-        WINE_LOWER: "lower",
-    };
-    static _CUSTOM_PROPERTIES: CustomProperties = ["temperatureInUnits"];
-    constructor(profile: Record<string, any>) {
+    static _RESOURCE_MAP: ResourceMap = WINE_CELLAR_RESOURCE_MAP;
+    static _PROFILE: ProfileMap = WINE_CELLAR_PROFILE_MAP;
+    static _LOCATION_MAP: LocationMap = WINE_CELLAR_LOCATION_MAP;
+    static _CUSTOM_PROPERTIES: CustomProperties = WINE_CELLAR_CUSTOM_PROPERTIES;
+    constructor(profile: Record<string, DynamicObjectOrStringArray>) {
         super(
             profile,
-            WineCellarProfile._RESOURCE_MAP,
-            WineCellarProfile._PROFILE,
-            WineCellarProfile._LOCATION_MAP,
-            WineCellarProfile._CUSTOM_PROPERTIES,
+            WINE_CELLAR_RESOURCE_MAP,
+            WINE_CELLAR_PROFILE_MAP,
+            WINE_CELLAR_LOCATION_MAP,
+            WINE_CELLAR_CUSTOM_PROPERTIES,
         );
-        const _locationProperties: Record<
-            string,
-            Record<string, string[]>
-        > = {};
-        for (const locationProperty of _.get(
-            profile,
-            "property.temperatureInUnits",
-            [],
-        )) {
-            const locationName = _.get(locationProperty, "locationName");
-            if (locationName in WineCellarProfile._LOCATION_MAP) {
-                const attrKey = WineCellarProfile._LOCATION_MAP[locationName];
-                const _subProfile = new WineCellarSubProfile(
-                    profile,
-                    locationName,
-                );
-                this[attrKey] = _subProfile;
-                _locationProperties[attrKey] = _subProfile.properties;
-            }
-        }
-        this._locationProperties = _locationProperties;
+        initializeWineCellarLocationProfiles(this, profile);
     }
 }
 
-class WineCellarSubProfile extends ConnectDeviceProfile {
-    static _RESOURCE_MAP: ResourceMap = { temperatureInUnits: "temperature" };
+export const WINE_CELLAR_SUB_RESOURCE_MAP: ResourceMap = {
+    temperatureInUnits: "temperature",
+};
 
-    static _PROFILE: ProfileMap = {
-        temperatureInUnits: {
-            targetTemperatureC: "targetTemperatureC",
-            targetTemperatureF: "targetTemperatureF",
-            unit: "temperatureUnit",
-        },
-    };
-    static _LOCATION_MAP: LocationMap = {};
-    static _CUSTOM_PROPERTIES: CustomProperties = ["temperatureInUnits"];
+export const WINE_CELLAR_SUB_PROFILE_MAP: ProfileMap = {
+    temperatureInUnits: {
+        targetTemperatureC: "targetTemperatureC",
+        targetTemperatureF: "targetTemperatureF",
+        unit: "temperatureUnit",
+    },
+};
+export const WINE_CELLAR_SUB_LOCATION_MAP: LocationMap = {};
+export const WINE_CELLAR_SUB_CUSTOM_PROPERTIES: CustomProperties = [
+    "temperatureInUnits",
+];
 
-    constructor(profile: Record<string, any>, locationName: string) {
-        super(
-            profile,
-            WineCellarSubProfile._RESOURCE_MAP,
-            WineCellarSubProfile._PROFILE,
-            WineCellarSubProfile._LOCATION_MAP,
-            WineCellarSubProfile._CUSTOM_PROPERTIES,
-            false,
-            false,
-            locationName,
-            false,
-        );
-        this._locationName = locationName;
-    }
-
-    _generateCustomResourceProperties(
-        resourceKey: string,
-        resourceProperty: Record<string, unknown>[],
-        props: Record<string, string>,
-    ): [string[], string[]] {
+export const wineCellarSubCustomResourcePropertiesHandler: CustomResourcePropertiesHandler =
+    (_resourceKey, resourceProperty, props, profile): [string[], string[]] => {
         const readableProps: string[] = [];
         const writableProps: string[] = [];
-        if (!_.includes(_.keys(this._PROFILE), resourceKey)) {
-            return [readableProps, writableProps];
-        }
-        for (const _locationProperty of resourceProperty) {
-            if (_locationProperty["locationName"] !== this._locationName) {
+        for (const locationProperty of resourceProperty as Record<
+            string,
+            unknown
+        >[]) {
+            if (locationProperty["locationName"] !== profile._locationName) {
                 continue;
             }
             for (const [propKey, propAttr] of _.toPairs(props)) {
-                const prop = this._getProperties(
-                    _locationProperty as Record<
+                const prop = profile._getProperties(
+                    locationProperty as Record<
                         string,
                         DynamicObjectOrStringArray
                     >,
@@ -125,12 +139,62 @@ class WineCellarSubProfile extends ConnectDeviceProfile {
                 delete prop["unit"];
                 if (prop[READABILITY]) readableProps.push(`${propAttr}`);
                 if (prop[WRITABILITY]) writableProps.push(`${propAttr}`);
-                this._setPropAttr(propAttr, prop);
+                profile._setPropAttr(propAttr, prop);
             }
         }
         return [readableProps, writableProps];
+    };
+
+export const WINE_CELLAR_SUB_PROFILE_DEFINITION: ConnectDeviceProfileDefinition =
+    {
+        resourceMap: WINE_CELLAR_SUB_RESOURCE_MAP,
+        profileMap: WINE_CELLAR_SUB_PROFILE_MAP,
+        locationMap: WINE_CELLAR_SUB_LOCATION_MAP,
+        customProperties: WINE_CELLAR_SUB_CUSTOM_PROPERTIES,
+        customResourcePropertiesHandler:
+            wineCellarSubCustomResourcePropertiesHandler,
+        useNotification: false,
+    };
+
+class WineCellarSubProfile extends ConnectDeviceProfile {
+    static _RESOURCE_MAP: ResourceMap = WINE_CELLAR_SUB_RESOURCE_MAP;
+    static _PROFILE: ProfileMap = WINE_CELLAR_SUB_PROFILE_MAP;
+    static _LOCATION_MAP: LocationMap = WINE_CELLAR_SUB_LOCATION_MAP;
+    static _CUSTOM_PROPERTIES: CustomProperties =
+        WINE_CELLAR_SUB_CUSTOM_PROPERTIES;
+
+    constructor(
+        profile: Record<string, DynamicObjectOrStringArray>,
+        locationName: string,
+    ) {
+        super(
+            profile,
+            WINE_CELLAR_SUB_PROFILE_DEFINITION.resourceMap,
+            WINE_CELLAR_SUB_PROFILE_DEFINITION.profileMap,
+            WINE_CELLAR_SUB_PROFILE_DEFINITION.locationMap,
+            WINE_CELLAR_SUB_PROFILE_DEFINITION.customProperties,
+            false,
+            false,
+            locationName,
+            WINE_CELLAR_SUB_PROFILE_DEFINITION.useNotification,
+            WINE_CELLAR_SUB_PROFILE_DEFINITION.customResourcePropertiesHandler,
+        );
+        this._locationName = locationName;
     }
 }
+
+export const createWineCellarSubProfile = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+    locationName: string,
+): ConnectDeviceProfile => {
+    return new WineCellarSubProfile(profile, locationName);
+};
+
+export const createWineCellarProfile = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+): ConnectDeviceProfile => {
+    return new WineCellarProfile(profile);
+};
 
 export class WineCellarSubDevice extends ConnectSubDevice {
     constructor(
@@ -227,7 +291,7 @@ export class WineCellarDevice extends ConnectMainDevice {
         modelName: string,
         alias: string,
         reportable: boolean,
-        profile: Record<string, any>,
+        profile: Record<string, DynamicObjectOrStringArray>,
     ) {
         super(
             thinqApi,
@@ -236,7 +300,7 @@ export class WineCellarDevice extends ConnectMainDevice {
             modelName,
             alias,
             reportable,
-            new WineCellarProfile(profile),
+            createWineCellarProfile(profile),
             WineCellarSubDevice,
         );
     }
@@ -246,7 +310,7 @@ export class WineCellarDevice extends ConnectMainDevice {
     }
 
     getSubDevice(locationName: string): ConnectSubDevice | null {
-        return super.getSubDevice(locationName);
+        return super.getSubDevice(locationName) as ConnectSubDevice | null;
     }
 
     setLightBrightness = async (

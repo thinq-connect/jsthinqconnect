@@ -3,31 +3,56 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import _ from "lodash";
-import { ConnectBaseDevice, ConnectDeviceProfile } from "./ConnectDevice";
+import {
+    ConnectBaseDevice,
+    ConnectDeviceProfile,
+    ConnectDeviceProfileDefinition,
+    createConnectDeviceProfile,
+} from "./ConnectDevice";
 import {
     ResourceMap,
     ProfileMap,
     CustomProperties,
     LocationMap,
 } from "../types/Resources";
+import { DynamicObjectOrStringArray } from "../types/Devices";
 import { ThinQApi, ThinQApiResponse } from "../ThinQAPI";
 
-export class HoodProfile extends ConnectDeviceProfile {
-    static _RESOURCE_MAP: ResourceMap = {
-        ventilation: "ventilation",
-        lamp: "lamp",
-        operation: "operation",
-    };
-    static _PROFILE: ProfileMap = {
-        ventilation: { fanSpeed: "fanSpeed" },
-        lamp: { lampBrightness: "lampBrightness" },
-        operation: { hoodOperationMode: "hoodOperationMode" },
-    };
-    static _CUSTOM_PROPERTIES: CustomProperties = [];
-    static _LOCATION_MAP: LocationMap = {};
+export const HOOD_RESOURCE_MAP: ResourceMap = {
+    ventilation: "ventilation",
+    lamp: "lamp",
+    operation: "operation",
+};
 
-    constructor(profile: Record<string, any>) {
+export const HOOD_PROFILE_MAP: ProfileMap = {
+    ventilation: { fanSpeed: "fanSpeed" },
+    lamp: { lampBrightness: "lampBrightness" },
+    operation: { hoodOperationMode: "hoodOperationMode" },
+};
+
+export const HOOD_CUSTOM_PROPERTIES: CustomProperties = [];
+export const HOOD_LOCATION_MAP: LocationMap = {};
+
+export const HOOD_PROFILE_DEFINITION: ConnectDeviceProfileDefinition = {
+    resourceMap: HOOD_RESOURCE_MAP,
+    profileMap: HOOD_PROFILE_MAP,
+    locationMap: HOOD_LOCATION_MAP,
+    customProperties: HOOD_CUSTOM_PROPERTIES,
+};
+
+export const createHoodProfile = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+): ConnectDeviceProfile => {
+    return createConnectDeviceProfile(profile, HOOD_PROFILE_DEFINITION);
+};
+
+export class HoodProfile extends ConnectDeviceProfile {
+    static _RESOURCE_MAP: ResourceMap = HOOD_RESOURCE_MAP;
+    static _PROFILE: ProfileMap = HOOD_PROFILE_MAP;
+    static _CUSTOM_PROPERTIES: CustomProperties = HOOD_CUSTOM_PROPERTIES;
+    static _LOCATION_MAP: LocationMap = HOOD_LOCATION_MAP;
+
+    constructor(profile: Record<string, DynamicObjectOrStringArray>) {
         super(
             profile,
             HoodProfile._RESOURCE_MAP,
@@ -46,7 +71,7 @@ export class HoodDevice extends ConnectBaseDevice {
         modelName: string,
         alias: string,
         reportable: boolean,
-        profile: Record<string, any>,
+        profile: Record<string, DynamicObjectOrStringArray>,
         energyProfile?: Record<string, unknown>,
     ) {
         super(
@@ -56,7 +81,7 @@ export class HoodDevice extends ConnectBaseDevice {
             modelName,
             alias,
             reportable,
-            new HoodProfile(profile),
+            createHoodProfile(profile),
             undefined,
             undefined,
             energyProfile,

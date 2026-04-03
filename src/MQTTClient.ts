@@ -26,6 +26,24 @@ const ClientConnectionState = {
     CLIENT_DISCONNECTED: "client_disconnected",
 };
 
+const isSuccessfulResponse = (response: {
+    status: number;
+    errorCode?: string | null;
+}): boolean => {
+    return (
+        response.status >= 200 && response.status < 300 && !response.errorCode
+    );
+};
+
+const isErrorWithMessage = (value: unknown): value is Error => {
+    return (
+        typeof value === "object" &&
+        value !== null &&
+        "message" in value &&
+        typeof (value as { message?: unknown }).message === "string"
+    );
+};
+
 type MessageReceivedCallback = (topic: string, payload: ArrayBuffer) => void;
 type ConnectionSuccessCallback = (sessionPresent: boolean) => void;
 type ConnectionErrorCallback = (error: Error) => void;
@@ -132,20 +150,25 @@ export class ThinQMQTTClient {
 
     async asyncInit(): Promise<void> {
         const routeResponse = await this._thinqApi.asyncGetRoute(API_TIMEOUT);
-        const mqttServerUrl = _.get(
-            routeResponse.body,
-            "mqttServer",
-            "",
-        ) as string;
-        this.mqttServer = _.split(
-            _.replace(mqttServerUrl, "mqtts://", ""),
-            ":",
-            2,
-        )[0];
+        const mqttServerUrl = _.get(routeResponse.body, "mqttServer", "") as
+            | string
+            | undefined;
+        if (!isSuccessfulResponse(routeResponse) || !mqttServerUrl) {
+            throw new Error(
+                routeResponse.errorMessage || "Failed to resolve MQTT route",
+            );
+        }
+        this.mqttServer = new URL(mqttServerUrl).hostname;
     }
 
     async asyncPrepareMqtt(): Promise<boolean> {
-        await this._thinqApi.asyncPostClientRegister(CLIENT_BODY, API_TIMEOUT);
+        const registerResponse = await this._thinqApi.asyncPostClientRegister(
+            CLIENT_BODY,
+            API_TIMEOUT,
+        );
+        if (!isSuccessfulResponse(registerResponse)) {
+            return false;
+        }
         if (!(await this.generateCSR())) {
             return false;
         }
@@ -211,7 +234,7 @@ export class ThinQMQTTClient {
             body,
             API_TIMEOUT,
         );
-        if (!response) return false;
+        if (!isSuccessfulResponse(response)) return false;
 
         const certificatePem = _.get(response, "body.result.certificatePem");
         const subscriptions = _.get(response, "body.result.subscriptions");
@@ -238,11 +261,11 @@ export class ThinQMQTTClient {
 
         const client = new mqtt.MqttClient(clientBootstrap);
         const connection = client.new_connection(configBuilder.build());
-        connection.on("connection_success", (sessionPresent: unknown) => {
-            this._onConnectSuccess(sessionPresent as boolean);
+        connection.on("connection_success", (result: unknown) => {
+            this._handleConnectionSuccess(result);
         });
-        connection.on("connection_failure", (error: unknown) => {
-            this._onConnectFailure(error as Error);
+        connection.on("connection_failure", (result: unknown) => {
+            this._handleConnectionFailure(result);
         });
         connection.on("interrupt", (error: unknown) => {
             this._onConnectInterrupted(error as Error);
@@ -257,6 +280,34 @@ export class ThinQMQTTClient {
         return connection;
     }
 
+    _handleConnectionSuccess(
+        result: mqtt.OnConnectionSuccessResult | boolean | unknown,
+    ): void {
+        if (typeof result === "boolean") {
+            this._onConnectSuccess(result);
+            return;
+        }
+        const sessionPresent = _.get(result, "session_present");
+        this._onConnectSuccess(
+            typeof sessionPresent === "boolean" ? sessionPresent : false,
+        );
+    }
+
+    _handleConnectionFailure(
+        result: mqtt.OnConnectionFailedResult | Error | unknown,
+    ): void {
+        if (isErrorWithMessage(result)) {
+            this._onConnectFailure(result);
+            return;
+        }
+        const error = _.get(result, "error");
+        this._onConnectFailure(
+            isErrorWithMessage(error)
+                ? error
+                : new Error(String(error || "MQTT connection failure")),
+        );
+    }
+
     async asyncConnectMqtt(): Promise<void> {
         const mqttConnection = await this.connectMqtt();
         console.log(
@@ -266,22 +317,17 @@ export class ThinQMQTTClient {
         try {
             const connectResult = await mqttConnection.connect();
             console.log(`Connect with session_present: ${connectResult}`);
+            await mqttConnection.subscribe(
+                this.topicSubscription,
+                mqtt.QoS.AtLeastOnce,
+            );
+            console.log("Complete subscription");
+            this._mqttConnection = mqttConnection;
             this._state = ClientConnectionState.CLIENT_CONNECTED;
         } catch (err) {
             console.log(`Failed to connect endpoint: ${err}`);
+            this._state = ClientConnectionState.CLIENT_DISCONNECTED;
             return;
-        }
-        this._mqttConnection = mqttConnection;
-        if (this._mqttConnection) {
-            try {
-                mqttConnection.subscribe(
-                    this.topicSubscription,
-                    mqtt.QoS.AtLeastOnce,
-                );
-                console.log("Complete subscription");
-            } catch (err) {
-                console.log(`Failed to subscribe: ${err}`);
-            }
         }
     }
 
@@ -292,6 +338,8 @@ export class ThinQMQTTClient {
                 this._state = ClientConnectionState.CLIENT_DISCONNECTED;
             } catch (err) {
                 console.log(`Failed to disconnect: ${err}`);
+            } finally {
+                this._mqttConnection = undefined;
             }
         }
     }

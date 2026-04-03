@@ -8,8 +8,10 @@ import {
     ConnectMainDevice,
     ConnectSubDevice,
     ConnectDeviceProfile,
+    ConnectDeviceProfileDefinition,
     READABILITY,
     WRITABILITY,
+    CustomResourcePropertiesHandler,
 } from "./ConnectDevice";
 import {
     ResourceMap,
@@ -24,59 +26,43 @@ import {
 } from "../types/Devices";
 import { ThinQApi, ThinQApiResponse } from "../ThinQAPI";
 
-export class RefrigeratorSubProfile extends ConnectDeviceProfile {
-    static _RESOURCE_MAP: ResourceMap = {
-        doorStatus: "doorStatus",
-        temperatureInUnits: "temperature",
-    };
+export const REFRIGERATOR_SUB_RESOURCE_MAP: ResourceMap = {
+    doorStatus: "doorStatus",
+    temperatureInUnits: "temperature",
+};
 
-    static _PROFILE: ProfileMap = {
-        doorStatus: { doorState: "doorState" },
-        temperatureInUnits: {
-            targetTemperatureC: "targetTemperatureC",
-            targetTemperatureF: "targetTemperatureF",
-            unit: "temperatureUnit",
-        },
-    };
-    static _CUSTOM_PROPERTIES: CustomProperties = [
-        "doorStatus",
-        "temperatureInUnits",
-    ];
-    static _LOCATION_MAP: LocationMap = {};
+export const REFRIGERATOR_SUB_PROFILE_MAP: ProfileMap = {
+    doorStatus: { doorState: "doorState" },
+    temperatureInUnits: {
+        targetTemperatureC: "targetTemperatureC",
+        targetTemperatureF: "targetTemperatureF",
+        unit: "temperatureUnit",
+    },
+};
+export const REFRIGERATOR_SUB_CUSTOM_PROPERTIES: CustomProperties = [
+    "doorStatus",
+    "temperatureInUnits",
+];
+export const REFRIGERATOR_SUB_LOCATION_MAP: LocationMap = {};
 
-    constructor(profile: Record<string, any>, locationName: string) {
-        super(
-            profile,
-            RefrigeratorSubProfile._RESOURCE_MAP,
-            RefrigeratorSubProfile._PROFILE,
-            RefrigeratorSubProfile._LOCATION_MAP,
-            RefrigeratorSubProfile._CUSTOM_PROPERTIES,
-            false,
-            false,
-            locationName,
-            false,
-        );
-        this._locationName = locationName;
-    }
-
-    _generateCustomResourceProperties(
-        resourceKey: string,
-        resourceProperty: Record<string, unknown>[],
-        props: Record<string, string>,
-    ): [string[], string[]] {
+export const refrigeratorSubCustomResourcePropertiesHandler: CustomResourcePropertiesHandler =
+    (resourceKey, resourceProperty, props, profile): [string[], string[]] => {
         const readableProps: string[] = [];
         const writableProps: string[] = [];
 
-        if (!(resourceKey in RefrigeratorSubProfile._PROFILE)) {
+        if (!(resourceKey in REFRIGERATOR_SUB_PROFILE_MAP)) {
             return [readableProps, writableProps];
         }
-        for (const _locationProperty of resourceProperty) {
-            if (_locationProperty["locationName"] !== this._locationName)
+        for (const locationProperty of resourceProperty as Record<
+            string,
+            unknown
+        >[]) {
+            if (locationProperty["locationName"] !== profile._locationName)
                 continue;
 
             for (const [propKey, propAttr] of _.toPairs(props)) {
-                const prop = this._getProperties(
-                    _locationProperty as Record<
+                const prop = profile._getProperties(
+                    locationProperty as Record<
                         string,
                         DynamicObjectOrStringArray
                     >,
@@ -85,44 +71,150 @@ export class RefrigeratorSubProfile extends ConnectDeviceProfile {
                 delete prop["unit"];
                 if (prop[READABILITY]) readableProps.push(`${propAttr}`);
                 if (prop[WRITABILITY]) writableProps.push(`${propAttr}`);
-                this._setPropAttr(propAttr, prop);
+                profile._setPropAttr(propAttr, prop);
             }
         }
         return [readableProps, writableProps];
+    };
+
+export const REFRIGERATOR_SUB_PROFILE_DEFINITION: ConnectDeviceProfileDefinition =
+    {
+        resourceMap: REFRIGERATOR_SUB_RESOURCE_MAP,
+        profileMap: REFRIGERATOR_SUB_PROFILE_MAP,
+        locationMap: REFRIGERATOR_SUB_LOCATION_MAP,
+        customProperties: REFRIGERATOR_SUB_CUSTOM_PROPERTIES,
+        customResourcePropertiesHandler:
+            refrigeratorSubCustomResourcePropertiesHandler,
+        useNotification: false,
+    };
+
+export class RefrigeratorSubProfile extends ConnectDeviceProfile {
+    static _RESOURCE_MAP: ResourceMap = REFRIGERATOR_SUB_RESOURCE_MAP;
+    static _PROFILE: ProfileMap = REFRIGERATOR_SUB_PROFILE_MAP;
+    static _CUSTOM_PROPERTIES: CustomProperties =
+        REFRIGERATOR_SUB_CUSTOM_PROPERTIES;
+    static _LOCATION_MAP: LocationMap = REFRIGERATOR_SUB_LOCATION_MAP;
+
+    constructor(
+        profile: Record<string, DynamicObjectOrStringArray>,
+        locationName: string,
+    ) {
+        super(
+            profile,
+            REFRIGERATOR_SUB_PROFILE_DEFINITION.resourceMap,
+            REFRIGERATOR_SUB_PROFILE_DEFINITION.profileMap,
+            REFRIGERATOR_SUB_PROFILE_DEFINITION.locationMap,
+            REFRIGERATOR_SUB_PROFILE_DEFINITION.customProperties,
+            false,
+            false,
+            locationName,
+            REFRIGERATOR_SUB_PROFILE_DEFINITION.useNotification,
+            REFRIGERATOR_SUB_PROFILE_DEFINITION.customResourcePropertiesHandler,
+        );
+        this._locationName = locationName;
     }
 }
 
+export const REFRIGERATOR_RESOURCE_MAP: ResourceMap = {
+    powerSave: "powerSave",
+    ecoFriendly: "ecoFriendly",
+    sabbath: "sabbath",
+    refrigeration: "refrigeration",
+    waterFilterInfo: "waterFilterInfo",
+};
+export const REFRIGERATOR_PROFILE_MAP: ProfileMap = {
+    powerSave: { powerSaveEnabled: "powerSaveEnabled" },
+    ecoFriendly: { ecoFriendlyMode: "ecoFriendlyMode" },
+    sabbath: { sabbathMode: "sabbathMode" },
+    refrigeration: {
+        rapidFreeze: "rapidFreeze",
+        expressMode: "expressMode",
+        expressModeName: "expressModeName",
+        expressFridge: "expressFridge",
+        freshAirFilter: "freshAirFilter",
+        freshAirFilterRemainPercent: "freshAirFilterRemainPercent",
+    },
+    waterFilterInfo: {
+        usedTime: "usedTime",
+        unit: "waterFilterInfoUnit",
+        waterFilterState: "waterFilterState",
+        waterFilter1RemainPercent: "waterFilter1RemainPercent",
+        waterFilter2RemainPercent: "waterFilter2RemainPercent",
+        waterFilter3RemainPercent: "waterFilter3RemainPercent",
+    },
+};
+export const REFRIGERATOR_LOCATION_MAP: LocationMap = {};
+export const REFRIGERATOR_CUSTOM_PROPERTIES: CustomProperties = [];
+
+type RefrigeratorPropertyEntry = Record<string, unknown>;
+type RefrigeratorLocationProperties = Record<string, Record<string, string[]>>;
+
+const getRefrigeratorPropertyEntries = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+    path: string,
+): RefrigeratorPropertyEntry[] => {
+    const propertyEntries = _.get(profile, path, []);
+    return Array.isArray(propertyEntries)
+        ? (propertyEntries as RefrigeratorPropertyEntry[])
+        : [];
+};
+
+const getRefrigeratorLocationName = (
+    locationProperty: RefrigeratorPropertyEntry,
+): string | undefined => {
+    return _.get(locationProperty, "locationName") as string | undefined;
+};
+
+const appendRefrigeratorLocationProfiles = (
+    locationProperties: RefrigeratorLocationProperties,
+    mainProfile: RefrigeratorProfile,
+    profile: Record<string, DynamicObjectOrStringArray>,
+    propertyPath: string,
+    locationMap: LocationMap,
+): void => {
+    for (const locationProperty of getRefrigeratorPropertyEntries(
+        profile,
+        propertyPath,
+    )) {
+        const locationName = getRefrigeratorLocationName(locationProperty);
+        if (!locationName || !(locationName in locationMap)) {
+            continue;
+        }
+        const attrKey = locationMap[locationName];
+        const subProfile = createRefrigeratorSubProfile(profile, locationName);
+        mainProfile[attrKey] = subProfile;
+        locationProperties[attrKey] = subProfile.properties;
+    }
+};
+
+const initializeRefrigeratorLocationProfiles = (
+    mainProfile: RefrigeratorProfile,
+    profile: Record<string, DynamicObjectOrStringArray>,
+): void => {
+    const locationProperties: RefrigeratorLocationProperties = {};
+    appendRefrigeratorLocationProfiles(
+        locationProperties,
+        mainProfile,
+        profile,
+        "property.doorStatus",
+        RefrigeratorProfile._DOOR_LOCATION_MAP,
+    );
+    appendRefrigeratorLocationProfiles(
+        locationProperties,
+        mainProfile,
+        profile,
+        "property.temperatureInUnits",
+        RefrigeratorProfile._TEMPERATURE_LOCATION_MAP,
+    );
+    mainProfile._locationProperties = locationProperties;
+};
+
 export class RefrigeratorProfile extends ConnectDeviceProfile {
-    static _RESOURCE_MAP: ResourceMap = {
-        powerSave: "powerSave",
-        ecoFriendly: "ecoFriendly",
-        sabbath: "sabbath",
-        refrigeration: "refrigeration",
-        waterFilterInfo: "waterFilterInfo",
-    };
-    static _PROFILE: ProfileMap = {
-        powerSave: { powerSaveEnabled: "powerSaveEnabled" },
-        ecoFriendly: { ecoFriendlyMode: "ecoFriendlyMode" },
-        sabbath: { sabbathMode: "sabbathMode" },
-        refrigeration: {
-            rapidFreeze: "rapidFreeze",
-            expressMode: "expressMode",
-            expressModeName: "expressModeName",
-            expressFridge: "expressFridge",
-            freshAirFilter: "freshAirFilter",
-            freshAirFilterRemainPercent: "freshAirFilterRemainPercent",
-        },
-        waterFilterInfo: {
-            usedTime: "usedTime",
-            unit: "waterFilterInfoUnit",
-            waterFilterState: "waterFilterState",
-            waterFilter1RemainPercent: "waterFilter1RemainPercent",
-            waterFilter2RemainPercent: "waterFilter2RemainPercent",
-            waterFilter3RemainPercent: "waterFilter3RemainPercent",
-        },
-    };
-    static _LOCATION_MAP: LocationMap = {};
-    static _CUSTOM_PROPERTIES: CustomProperties = [];
+    static _RESOURCE_MAP: ResourceMap = REFRIGERATOR_RESOURCE_MAP;
+    static _PROFILE: ProfileMap = REFRIGERATOR_PROFILE_MAP;
+    static _LOCATION_MAP: LocationMap = REFRIGERATOR_LOCATION_MAP;
+    static _CUSTOM_PROPERTIES: CustomProperties =
+        REFRIGERATOR_CUSTOM_PROPERTIES;
 
     static _DOOR_LOCATION_MAP: LocationMap = { MAIN: "main" };
     static _TEMPERATURE_LOCATION_MAP: LocationMap = {
@@ -131,53 +223,15 @@ export class RefrigeratorProfile extends ConnectDeviceProfile {
         CONVERTIBLE: "convertible",
     };
 
-    constructor(profile: Record<string, any>) {
+    constructor(profile: Record<string, DynamicObjectOrStringArray>) {
         super(
             profile,
-            RefrigeratorProfile._RESOURCE_MAP,
-            RefrigeratorProfile._PROFILE,
-            RefrigeratorProfile._LOCATION_MAP,
-            RefrigeratorProfile._CUSTOM_PROPERTIES,
+            REFRIGERATOR_RESOURCE_MAP,
+            REFRIGERATOR_PROFILE_MAP,
+            REFRIGERATOR_LOCATION_MAP,
+            REFRIGERATOR_CUSTOM_PROPERTIES,
         );
-        const _locationProperties: Record<
-            string,
-            Record<string, string[]>
-        > = {};
-        for (const locationProperty of _.get(
-            profile,
-            "property.doorStatus",
-            [],
-        )) {
-            const locationName = _.get(locationProperty, "locationName");
-            if (locationName in RefrigeratorProfile._DOOR_LOCATION_MAP) {
-                const attrKey =
-                    RefrigeratorProfile._DOOR_LOCATION_MAP[locationName];
-                const _subProfile = new RefrigeratorSubProfile(
-                    profile,
-                    locationName,
-                );
-                this[attrKey] = _subProfile;
-                _locationProperties[attrKey] = _subProfile.properties;
-            }
-        }
-        for (const locationProperty of _.get(
-            profile,
-            "property.temperatureInUnits",
-            [],
-        )) {
-            const locationName = _.get(locationProperty, "locationName");
-            if (locationName in RefrigeratorProfile._TEMPERATURE_LOCATION_MAP) {
-                const attrKey =
-                    RefrigeratorProfile._TEMPERATURE_LOCATION_MAP[locationName];
-                const _subProfile = new RefrigeratorSubProfile(
-                    profile,
-                    locationName,
-                );
-                this[attrKey] = _subProfile;
-                _locationProperties[attrKey] = _subProfile.properties;
-            }
-        }
-        this._locationProperties = _locationProperties;
+        initializeRefrigeratorLocationProfiles(this, profile);
     }
 
     getLocationKey(locationName: string): string | undefined {
@@ -193,6 +247,19 @@ export class RefrigeratorProfile extends ConnectDeviceProfile {
         }
     }
 }
+
+export const createRefrigeratorSubProfile = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+    locationName: string,
+): ConnectDeviceProfile => {
+    return new RefrigeratorSubProfile(profile, locationName);
+};
+
+export const createRefrigeratorProfile = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+): ConnectDeviceProfile => {
+    return new RefrigeratorProfile(profile);
+};
 
 export class RefrigeratorSubDevice extends ConnectSubDevice {
     constructor(
@@ -288,7 +355,7 @@ export class RefrigeratorDevice extends ConnectMainDevice {
         modelName: string,
         alias: string,
         reportable: boolean,
-        profile: Record<string, any>,
+        profile: Record<string, DynamicObjectOrStringArray>,
         energyProfile?: Record<string, unknown>,
     ) {
         super(
@@ -298,7 +365,7 @@ export class RefrigeratorDevice extends ConnectMainDevice {
             modelName,
             alias,
             reportable,
-            new RefrigeratorProfile(profile),
+            createRefrigeratorProfile(profile),
             RefrigeratorSubDevice,
             energyProfile,
         );
@@ -309,7 +376,7 @@ export class RefrigeratorDevice extends ConnectMainDevice {
     }
 
     getSubDevice(locationName: string): ConnectSubDevice | null {
-        return super.getSubDevice(locationName);
+        return super.getSubDevice(locationName) as ConnectSubDevice | null;
     }
 
     setRapidFreeze = async (

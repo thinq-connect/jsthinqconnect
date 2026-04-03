@@ -3,14 +3,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import _ from "lodash";
-import { ConnectBaseDevice, ConnectDeviceProfile } from "./ConnectDevice";
+import {
+    ConnectBaseDevice,
+    ConnectDeviceProfile,
+    ConnectDeviceProfileDefinition,
+    createConnectDeviceProfile,
+} from "./ConnectDevice";
 import {
     ResourceMap,
     ProfileMap,
     CustomProperties,
     LocationMap,
 } from "../types/Resources";
+import { DynamicObjectOrStringArray } from "../types/Devices";
 import { ThinQApi, ThinQApiResponse } from "../ThinQAPI";
 
 export class MicrowaveOvenProfile extends ConnectDeviceProfile {
@@ -41,6 +46,26 @@ export class MicrowaveOvenProfile extends ConnectDeviceProfile {
     }
 }
 
+export const MICROWAVE_OVEN_RESOURCE_MAP: ResourceMap =
+    MicrowaveOvenProfile._RESOURCE_MAP;
+export const MICROWAVE_OVEN_PROFILE_MAP: ProfileMap =
+    MicrowaveOvenProfile._PROFILE;
+export const MICROWAVE_OVEN_CUSTOM_PROPERTIES: CustomProperties =
+    MicrowaveOvenProfile._CUSTOM_PROPERTIES;
+export const MICROWAVE_OVEN_LOCATION_MAP: LocationMap =
+    MicrowaveOvenProfile._LOCATION_MAP;
+export const MICROWAVE_OVEN_PROFILE_DEFINITION: ConnectDeviceProfileDefinition =
+    {
+        resourceMap: MICROWAVE_OVEN_RESOURCE_MAP,
+        profileMap: MICROWAVE_OVEN_PROFILE_MAP,
+        locationMap: MICROWAVE_OVEN_LOCATION_MAP,
+        customProperties: MICROWAVE_OVEN_CUSTOM_PROPERTIES,
+    };
+export const createMicrowaveOvenProfile = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+): ConnectDeviceProfile =>
+    createConnectDeviceProfile(profile, MICROWAVE_OVEN_PROFILE_DEFINITION);
+
 export class MicrowaveOvenDevice extends ConnectBaseDevice {
     constructor(
         thinqApi: ThinQApi,
@@ -49,7 +74,7 @@ export class MicrowaveOvenDevice extends ConnectBaseDevice {
         modelName: string,
         alias: string,
         reportable: boolean,
-        profile: Record<string, any>,
+        profile: Record<string, DynamicObjectOrStringArray>,
         energyProfile?: Record<string, unknown>,
     ) {
         super(
@@ -59,7 +84,7 @@ export class MicrowaveOvenDevice extends ConnectBaseDevice {
             modelName,
             alias,
             reportable,
-            new MicrowaveOvenProfile(profile),
+            createMicrowaveOvenProfile(profile),
             undefined,
             undefined,
             energyProfile,

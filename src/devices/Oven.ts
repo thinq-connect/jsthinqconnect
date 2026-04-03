@@ -8,6 +8,7 @@ import {
     ConnectMainDevice,
     ConnectSubDevice,
     ConnectDeviceProfile,
+    ConnectDeviceProfileDefinition,
     READABILITY,
     WRITABILITY,
 } from "./ConnectDevice";
@@ -24,89 +25,144 @@ import {
 } from "../types/Devices";
 import { ThinQApi, ThinQApiResponse } from "../ThinQAPI";
 
-export class OvenProfile extends ConnectDeviceProfile {
-    static _RESOURCE_MAP: ResourceMap = { info: "info" };
-    static _PROFILE: ProfileMap = { info: { type: "ovenType" } };
-    static _LOCATION_MAP: LocationMap = {
-        OVEN: "oven",
-        UPPER: "upper",
-        LOWER: "lower",
-    };
-    static _CUSTOM_PROPERTIES: CustomProperties = [];
+export const OVEN_RESOURCE_MAP: ResourceMap = { info: "info" };
+export const OVEN_PROFILE_MAP: ProfileMap = { info: { type: "ovenType" } };
+export const OVEN_LOCATION_MAP: LocationMap = {
+    OVEN: "oven",
+    UPPER: "upper",
+    LOWER: "lower",
+};
+export const OVEN_CUSTOM_PROPERTIES: CustomProperties = [];
 
-    constructor(profile: Record<string, any>) {
+type OvenPropertyEntry = Record<string, unknown>;
+type OvenLocationProperties = Record<string, Record<string, string[]>>;
+
+const getOvenProfileEntries = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+): OvenPropertyEntry[] => {
+    const profileEntries = _.get(profile, "property", []);
+    return Array.isArray(profileEntries)
+        ? (profileEntries as OvenPropertyEntry[])
+        : [];
+};
+
+const getOvenLocationName = (
+    profileProperty: OvenPropertyEntry,
+): string | undefined => {
+    return _.get(profileProperty, "location.locationName") as
+        | string
+        | undefined;
+};
+
+const initializeOvenLocationProfiles = (
+    mainProfile: OvenProfile,
+    profile: Record<string, DynamicObjectOrStringArray>,
+): void => {
+    const locationProperties: OvenLocationProperties = {};
+    for (const profileProperty of getOvenProfileEntries(profile)) {
+        const locationName = getOvenLocationName(profileProperty);
+        if (!locationName || !(locationName in OVEN_LOCATION_MAP)) {
+            continue;
+        }
+        const attrKey = OVEN_LOCATION_MAP[locationName];
+        const subProfile = createOvenSubProfile(profile, locationName);
+        mainProfile[attrKey] = subProfile;
+        locationProperties[attrKey] = subProfile.properties;
+    }
+    mainProfile._locationProperties = locationProperties;
+};
+
+export const OVEN_PROFILE_DEFINITION: ConnectDeviceProfileDefinition = {
+    resourceMap: OVEN_RESOURCE_MAP,
+    profileMap: OVEN_PROFILE_MAP,
+    locationMap: OVEN_LOCATION_MAP,
+    customProperties: OVEN_CUSTOM_PROPERTIES,
+    useExtensionProperty: true,
+};
+
+export class OvenProfile extends ConnectDeviceProfile {
+    static _RESOURCE_MAP: ResourceMap = OVEN_RESOURCE_MAP;
+    static _PROFILE: ProfileMap = OVEN_PROFILE_MAP;
+    static _LOCATION_MAP: LocationMap = OVEN_LOCATION_MAP;
+    static _CUSTOM_PROPERTIES: CustomProperties = OVEN_CUSTOM_PROPERTIES;
+
+    constructor(profile: Record<string, DynamicObjectOrStringArray>) {
         super(
             profile,
-            OvenProfile._RESOURCE_MAP,
-            OvenProfile._PROFILE,
-            OvenProfile._LOCATION_MAP,
-            OvenProfile._CUSTOM_PROPERTIES,
-            true,
-            false,
+            OVEN_PROFILE_DEFINITION.resourceMap,
+            OVEN_PROFILE_DEFINITION.profileMap,
+            OVEN_PROFILE_DEFINITION.locationMap,
+            OVEN_PROFILE_DEFINITION.customProperties,
+            OVEN_PROFILE_DEFINITION.useExtensionProperty,
+            OVEN_PROFILE_DEFINITION.useSubProfileOnly,
         );
-        const _locationProperties: Record<
-            string,
-            Record<string, string[]>
-        > = {};
-        for (const profileProperty of _.get(profile, "property", [])) {
-            const locationName = _.get(
-                profileProperty,
-                "location.locationName",
-            );
-            if (locationName in OvenProfile._LOCATION_MAP) {
-                const attrKey = OvenProfile._LOCATION_MAP[locationName];
-                const _subProfile = new OvenSubProfile(profile, locationName);
-                this[attrKey] = _subProfile;
-                _locationProperties[attrKey] = _subProfile.properties;
-            }
-        }
-        this._locationProperties = _locationProperties;
+        initializeOvenLocationProfiles(this, profile);
     }
 }
 
+export const OVEN_SUB_RESOURCE_MAP: ResourceMap = {
+    runState: "runState",
+    operation: "operation",
+    cook: "cook",
+    remoteControlEnable: "remoteControlEnable",
+    temperature: "temperature",
+    timer: "timer",
+};
+
+export const OVEN_SUB_PROFILE_MAP: ProfileMap = {
+    runState: { currentState: "currentState" },
+    operation: { ovenOperationMode: "ovenOperationMode" },
+    cook: { cookMode: "cookMode" },
+    remoteControlEnable: { remoteControlEnabled: "remoteControlEnabled" },
+    temperature: {
+        C: "targetTemperatureC",
+        F: "targetTemperatureF",
+        unit: "temperatureUnit",
+    },
+    timer: {
+        remainHour: "remainHour",
+        remainMinute: "remainMinute",
+        remainSecond: "remainSecond",
+        targetHour: "targetHour",
+        targetMinute: "targetMinute",
+        targetSecond: "targetSecond",
+        timerHour: "timerHour",
+        timerMinute: "timerMinute",
+        timerSecond: "timerSecond",
+    },
+};
+export const OVEN_SUB_CUSTOM_PROPERTIES: CustomProperties = ["temperature"];
+export const OVEN_SUB_LOCATION_MAP: LocationMap = {};
+
+const getOvenLocationPropertyEntries = (
+    property: OvenPropertyEntry[] | OvenPropertyEntry,
+    locationName: string | null,
+): OvenPropertyEntry[] => {
+    if (!Array.isArray(property)) {
+        return [property];
+    }
+    return property.filter(
+        (locationProperty) =>
+            getOvenLocationName(locationProperty) === locationName,
+    );
+};
+
 export class OvenSubProfile extends ConnectDeviceProfile {
-    static _RESOURCE_MAP: ResourceMap = {
-        runState: "runState",
-        operation: "operation",
-        cook: "cook",
-        remoteControlEnable: "remoteControlEnable",
-        temperature: "temperature",
-        timer: "timer",
-    };
+    static _RESOURCE_MAP: ResourceMap = OVEN_SUB_RESOURCE_MAP;
+    static _PROFILE: ProfileMap = OVEN_SUB_PROFILE_MAP;
+    static _CUSTOM_PROPERTIES: CustomProperties = OVEN_SUB_CUSTOM_PROPERTIES;
+    static _LocationMap: LocationMap = OVEN_SUB_LOCATION_MAP;
 
-    static _PROFILE: ProfileMap = {
-        runState: { currentState: "currentState" },
-        operation: { ovenOperationMode: "ovenOperationMode" },
-        cook: { cookMode: "cookMode" },
-        remoteControlEnable: { remoteControlEnabled: "remoteControlEnabled" },
-        temperature: {
-            C: "targetTemperatureC",
-            F: "targetTemperatureF",
-            unit: "temperatureUnit",
-        },
-        timer: {
-            remainHour: "remainHour",
-            remainMinute: "remainMinute",
-            remainSecond: "remainSecond",
-            targetHour: "targetHour",
-            targetMinute: "targetMinute",
-            targetSecond: "targetSecond",
-            timerHour: "timerHour",
-            timerMinute: "timerMinute",
-            timerSecond: "timerSecond",
-        },
-    };
-
-    static _CUSTOM_PROPERTIES: CustomProperties = ["temperature"];
-    static _LocationMap: LocationMap = {};
-
-    constructor(profile: Record<string, any>, locationName: string) {
+    constructor(
+        profile: Record<string, DynamicObjectOrStringArray>,
+        locationName: string,
+    ) {
         super(
             profile,
-            OvenSubProfile._RESOURCE_MAP,
-            OvenSubProfile._PROFILE,
-            OvenSubProfile._LocationMap,
-            OvenSubProfile._CUSTOM_PROPERTIES,
+            OVEN_SUB_RESOURCE_MAP,
+            OVEN_SUB_PROFILE_MAP,
+            OVEN_SUB_LOCATION_MAP,
+            OVEN_SUB_CUSTOM_PROPERTIES,
             false,
             false,
             locationName,
@@ -167,18 +223,30 @@ export class OvenSubProfile extends ConnectDeviceProfile {
         return [readableProps, writableProps];
     }
 
-    generateProperties(property: Record<string, unknown>[]): void {
-        for (const locationProperty of property) {
-            if (
-                _.get(locationProperty, "location.locationName") !==
-                this._locationName
-            ) {
-                continue;
-            }
+    generateProperties(
+        property: OvenPropertyEntry[] | OvenPropertyEntry,
+    ): void {
+        for (const locationProperty of getOvenLocationPropertyEntries(
+            property,
+            this._locationName,
+        )) {
             super.generateProperties(locationProperty);
         }
     }
 }
+
+export const createOvenSubProfile = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+    locationName: string,
+): ConnectDeviceProfile => {
+    return new OvenSubProfile(profile, locationName);
+};
+
+export const createOvenProfile = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+): ConnectDeviceProfile => {
+    return new OvenProfile(profile);
+};
 
 export class OvenSubDevice extends ConnectSubDevice {
     static _CUSTOM_SET_PROPERTY_NAME = {
@@ -409,7 +477,7 @@ export class OvenDevice extends ConnectMainDevice {
         modelName: string,
         alias: string,
         reportable: boolean,
-        profile: Record<string, any>,
+        profile: Record<string, DynamicObjectOrStringArray>,
         energyProfile?: Record<string, unknown>,
     ) {
         super(
@@ -419,7 +487,7 @@ export class OvenDevice extends ConnectMainDevice {
             modelName,
             alias,
             reportable,
-            new OvenProfile(profile),
+            createOvenProfile(profile),
             OvenSubDevice,
             energyProfile,
         );
@@ -435,6 +503,6 @@ export class OvenDevice extends ConnectMainDevice {
     }
 
     getSubDevice(locationName: string): ConnectSubDevice | null {
-        return super.getSubDevice(locationName);
+        return super.getSubDevice(locationName) as ConnectSubDevice | null;
     }
 }

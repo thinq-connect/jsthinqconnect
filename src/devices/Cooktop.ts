@@ -15,33 +15,95 @@ import {
     CustomProperties,
     LocationMap,
 } from "../types/Resources";
-import { AttributePayload } from "../types/Devices";
+import { AttributePayload, DynamicObjectOrStringArray } from "../types/Devices";
 import { ThinQApi, ThinQApiResponse } from "../ThinQAPI";
 
+export const COOKTOP_SUB_RESOURCE_MAP: ResourceMap = {
+    cookingZone: "cookingZone",
+    power: "power",
+    remoteControlEnable: "remoteControlEnable",
+    timer: "timer",
+};
+
+export const COOKTOP_SUB_PROFILE_MAP: ProfileMap = {
+    cookingZone: { currentState: "currentState" },
+    power: { powerLevel: "powerLevel" },
+    remoteControlEnable: { remoteControlEnabled: "remoteControlEnabled" },
+    timer: { remainHour: "remainHour", remainMinute: "remainMinute" },
+};
+export const COOKTOP_SUB_CUSTOM_PROPERTIES: CustomProperties = [];
+export const COOKTOP_SUB_LOCATION_MAP: LocationMap = {};
+
+type CooktopPropertyEntry = Record<string, unknown>;
+type CooktopLocationProperties = Record<string, Record<string, string[]>>;
+
+const getCooktopProfileEntries = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+): CooktopPropertyEntry[] => {
+    const profileEntries = _.get(profile, "property", []);
+    return Array.isArray(profileEntries)
+        ? (profileEntries as CooktopPropertyEntry[])
+        : [];
+};
+
+const getCooktopLocationName = (
+    profileProperty: CooktopPropertyEntry,
+): string | undefined => {
+    return _.get(profileProperty, "location.locationName") as
+        | string
+        | undefined;
+};
+
+const initializeCooktopLocationProfiles = (
+    mainProfile: CooktopProfile,
+    profile: Record<string, DynamicObjectOrStringArray>,
+): void => {
+    const locationProperties: CooktopLocationProperties = {};
+    for (const profileProperty of getCooktopProfileEntries(profile)) {
+        const locationName = getCooktopLocationName(profileProperty);
+        if (!locationName || !(locationName in COOKTOP_LOCATION_MAP)) {
+            continue;
+        }
+        const attrKey = COOKTOP_LOCATION_MAP[locationName];
+        const subProfile = createCooktopSubProfile(profile, locationName);
+        mainProfile[attrKey] = subProfile;
+        locationProperties[attrKey] = subProfile.properties;
+    }
+    mainProfile._locationProperties = locationProperties;
+};
+
+const getCooktopLocationPropertyEntries = (
+    property:
+        | CooktopPropertyEntry
+        | CooktopPropertyEntry[]
+        | Record<string, unknown>[],
+    locationName: string | null,
+): CooktopPropertyEntry[] => {
+    if (!Array.isArray(property)) {
+        return [property];
+    }
+    return property.filter(
+        (locationProperty) =>
+            getCooktopLocationName(locationProperty) === locationName,
+    );
+};
+
 export class CooktopSubProfile extends ConnectDeviceProfile {
-    static _RESOURCE_MAP: ResourceMap = {
-        cookingZone: "cookingZone",
-        power: "power",
-        remoteControlEnable: "remoteControlEnable",
-        timer: "timer",
-    };
+    static _RESOURCE_MAP: ResourceMap = COOKTOP_SUB_RESOURCE_MAP;
+    static _PROFILE: ProfileMap = COOKTOP_SUB_PROFILE_MAP;
+    static _CUSTOM_PROPERTIES: CustomProperties = COOKTOP_SUB_CUSTOM_PROPERTIES;
+    static _LOCATION_MAP: LocationMap = COOKTOP_SUB_LOCATION_MAP;
 
-    static _PROFILE: ProfileMap = {
-        cookingZone: { currentState: "currentState" },
-        power: { powerLevel: "powerLevel" },
-        remoteControlEnable: { remoteControlEnabled: "remoteControlEnabled" },
-        timer: { remainHour: "remainHour", remainMinute: "remainMinute" },
-    };
-    static _CUSTOM_PROPERTIES: CustomProperties = [];
-    static _LOCATION_MAP: LocationMap = {};
-
-    constructor(profile: Record<string, any>, locationName: string) {
+    constructor(
+        profile: Record<string, DynamicObjectOrStringArray>,
+        locationName: string,
+    ) {
         super(
             profile,
-            CooktopSubProfile._RESOURCE_MAP,
-            CooktopSubProfile._PROFILE,
-            CooktopSubProfile._LOCATION_MAP,
-            CooktopSubProfile._CUSTOM_PROPERTIES,
+            COOKTOP_SUB_RESOURCE_MAP,
+            COOKTOP_SUB_PROFILE_MAP,
+            COOKTOP_SUB_LOCATION_MAP,
+            COOKTOP_SUB_CUSTOM_PROPERTIES,
             false,
             false,
             locationName,
@@ -49,77 +111,75 @@ export class CooktopSubProfile extends ConnectDeviceProfile {
         this._locationName = locationName;
     }
 
-    generateProperties(property: Record<string, unknown>[]): void {
-        for (const locationProperty of property) {
-            if (
-                _.get(locationProperty, "location.locationName") !==
-                this._locationName
-            ) {
-                continue;
-            }
+    generateProperties(
+        property: CooktopPropertyEntry | CooktopPropertyEntry[],
+    ): void {
+        for (const locationProperty of getCooktopLocationPropertyEntries(
+            property,
+            this._locationName,
+        )) {
             super.generateProperties(locationProperty);
         }
     }
 }
 
+export const COOKTOP_RESOURCE_MAP: ResourceMap = { operation: "operation" };
+export const COOKTOP_PROFILE_MAP: ProfileMap = {
+    operation: { operationMode: "operationMode" },
+};
+export const COOKTOP_LOCATION_MAP: LocationMap = {
+    CENTER: "center",
+    CENTER_FRONT: "centerFront",
+    CENTER_REAR: "centerRear",
+    LEFT_FRONT: "leftFront",
+    LEFT_REAR: "leftRear",
+    RIGHT_FRONT: "rightFront",
+    RIGHT_REAR: "rightRear",
+    BURNER_1: "burner_1",
+    BURNER_2: "burner_2",
+    BURNER_3: "burner_3",
+    BURNER_4: "burner_4",
+    BURNER_5: "burner_5",
+    BURNER_6: "burner_6",
+    BURNER_7: "burner_7",
+    BURNER_8: "burner_8",
+    INDUCTION_1: "induction_1",
+    INDUCTION_2: "induction_2",
+    SOUSVIDE_1: "sousvide_1",
+};
+export const COOKTOP_CUSTOM_PROPERTIES: CustomProperties = [];
+
 export class CooktopProfile extends ConnectDeviceProfile {
-    static _RESOURCE_MAP: ResourceMap = { operation: "operation" };
-    static _PROFILE: ProfileMap = {
-        operation: { operationMode: "operationMode" },
-    };
-    static _LOCATION_MAP: LocationMap = {
-        CENTER: "center",
-        CENTER_FRONT: "centerFront",
-        CENTER_REAR: "centerRear",
-        LEFT_FRONT: "leftFront",
-        LEFT_REAR: "leftRear",
-        RIGHT_FRONT: "rightFront",
-        RIGHT_REAR: "rightRear",
-        BURNER_1: "burner_1",
-        BURNER_2: "burner_2",
-        BURNER_3: "burner_3",
-        BURNER_4: "burner_4",
-        BURNER_5: "burner_5",
-        BURNER_6: "burner_6",
-        BURNER_7: "burner_7",
-        BURNER_8: "burner_8",
-        INDUCTION_1: "induction_1",
-        INDUCTION_2: "induction_2",
-        SOUSVIDE_1: "sousvide_1",
-    };
-    static _CUSTOM_PROPERTIES: CustomProperties = [];
-    constructor(profile: Record<string, any>) {
+    static _RESOURCE_MAP: ResourceMap = COOKTOP_RESOURCE_MAP;
+    static _PROFILE: ProfileMap = COOKTOP_PROFILE_MAP;
+    static _LOCATION_MAP: LocationMap = COOKTOP_LOCATION_MAP;
+    static _CUSTOM_PROPERTIES: CustomProperties = COOKTOP_CUSTOM_PROPERTIES;
+    constructor(profile: Record<string, DynamicObjectOrStringArray>) {
         super(
             profile,
-            CooktopProfile._RESOURCE_MAP,
-            CooktopProfile._PROFILE,
-            CooktopProfile._LOCATION_MAP,
-            CooktopProfile._CUSTOM_PROPERTIES,
+            COOKTOP_RESOURCE_MAP,
+            COOKTOP_PROFILE_MAP,
+            COOKTOP_LOCATION_MAP,
+            COOKTOP_CUSTOM_PROPERTIES,
             true,
             false,
         );
-        const _locationProperties: Record<
-            string,
-            Record<string, string[]>
-        > = {};
-        for (const profileProperty of _.get(profile, "property", [])) {
-            const locationName = _.get(
-                profileProperty,
-                "location.locationName",
-            );
-            if (locationName in CooktopProfile._LOCATION_MAP) {
-                const attrKey = CooktopProfile._LOCATION_MAP[locationName];
-                const _subProfile = new CooktopSubProfile(
-                    profile,
-                    locationName,
-                );
-                this[attrKey] = _subProfile;
-                _locationProperties[attrKey] = _subProfile.properties;
-            }
-        }
-        this._locationProperties = _locationProperties;
+        initializeCooktopLocationProfiles(this, profile);
     }
 }
+
+export const createCooktopSubProfile = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+    locationName: string,
+): ConnectDeviceProfile => {
+    return new CooktopSubProfile(profile, locationName);
+};
+
+export const createCooktopProfile = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+): ConnectDeviceProfile => {
+    return new CooktopProfile(profile);
+};
 
 export class CooktopSubDevice extends ConnectSubDevice {
     constructor(
@@ -206,7 +266,7 @@ export class CooktopDevice extends ConnectMainDevice {
         modelName: string,
         alias: string,
         reportable: boolean,
-        profile: Record<string, any>,
+        profile: Record<string, DynamicObjectOrStringArray>,
         energyProfile?: Record<string, unknown>,
     ) {
         super(
@@ -216,7 +276,7 @@ export class CooktopDevice extends ConnectMainDevice {
             modelName,
             alias,
             reportable,
-            new CooktopProfile(profile),
+            createCooktopProfile(profile),
             CooktopSubDevice,
             energyProfile,
         );
@@ -227,7 +287,7 @@ export class CooktopDevice extends ConnectMainDevice {
     }
 
     getSubDevice(locationName: string): ConnectSubDevice | null {
-        return super.getSubDevice(locationName);
+        return super.getSubDevice(locationName) as ConnectSubDevice | null;
     }
 
     setOperationMode = async (

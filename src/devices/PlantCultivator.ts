@@ -8,6 +8,7 @@ import {
     ConnectMainDevice,
     ConnectSubDevice,
     ConnectDeviceProfile,
+    ConnectDeviceProfileDefinition,
 } from "./ConnectDevice";
 import {
     ResourceMap,
@@ -15,87 +16,150 @@ import {
     LocationMap,
     CustomProperties,
 } from "../types/Resources";
+import { DynamicObjectOrStringArray } from "../types/Devices";
 import { ThinQApi } from "../ThinQAPI";
 
-export class PlantCultivatorProfile extends ConnectDeviceProfile {
-    static _RESOURCE_MAP: ResourceMap = {};
-    static _PROFILE: ProfileMap = {};
-    static _LOCATION_MAP: LocationMap = {
-        UPPER: "upper",
-        LOWER: "lower",
-    };
-    static _CUSTOM_PROPERTIES: CustomProperties = [];
+export const PLANT_CULTIVATOR_RESOURCE_MAP: ResourceMap = {};
+export const PLANT_CULTIVATOR_PROFILE_MAP: ProfileMap = {};
+export const PLANT_CULTIVATOR_LOCATION_MAP: LocationMap = {
+    UPPER: "upper",
+    LOWER: "lower",
+};
+export const PLANT_CULTIVATOR_CUSTOM_PROPERTIES: CustomProperties = [];
 
-    constructor(profile: Record<string, any>) {
+export const PLANT_CULTIVATOR_PROFILE_DEFINITION: ConnectDeviceProfileDefinition =
+    {
+        resourceMap: PLANT_CULTIVATOR_RESOURCE_MAP,
+        profileMap: PLANT_CULTIVATOR_PROFILE_MAP,
+        locationMap: PLANT_CULTIVATOR_LOCATION_MAP,
+        customProperties: PLANT_CULTIVATOR_CUSTOM_PROPERTIES,
+        useSubProfileOnly: true,
+    };
+
+export const PLANT_CULTIVATOR_SUB_RESOURCE_MAP: ResourceMap = {
+    runState: "runState",
+    light: "light",
+    temperature: "temperature",
+};
+
+export const PLANT_CULTIVATOR_SUB_PROFILE_MAP: ProfileMap = {
+    runState: {
+        currentState: "currentState",
+        growthMode: "growthMode",
+        windVolume: "windVolume",
+    },
+    light: {
+        brightness: "brightness",
+        duration: "duration",
+        startHour: "startHour",
+        startMinute: "startMinute",
+    },
+    temperature: {
+        dayTargetTemperature: "dayTargetTemperature",
+        nightTargetTemperature: "nightTargetTemperature",
+        temperatureState: "temperatureState",
+    },
+};
+export const PLANT_CULTIVATOR_SUB_LOCATION_MAP: LocationMap = {};
+
+type PlantCultivatorPropertyEntry = Record<string, unknown>;
+type PlantCultivatorLocationProperties = Record<
+    string,
+    Record<string, string[]>
+>;
+
+const getPlantCultivatorProfileEntries = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+): PlantCultivatorPropertyEntry[] => {
+    const profileEntries = _.get(profile, "property", []);
+    return Array.isArray(profileEntries)
+        ? (profileEntries as PlantCultivatorPropertyEntry[])
+        : [];
+};
+
+const getPlantCultivatorLocationName = (
+    profileProperty: PlantCultivatorPropertyEntry,
+): string | undefined => {
+    return _.get(profileProperty, "location.locationName") as
+        | string
+        | undefined;
+};
+
+const initializePlantCultivatorLocationProfiles = (
+    mainProfile: PlantCultivatorProfile,
+    profile: Record<string, DynamicObjectOrStringArray>,
+): void => {
+    const locationProperties: PlantCultivatorLocationProperties = {};
+    for (const profileProperty of getPlantCultivatorProfileEntries(profile)) {
+        const locationName = getPlantCultivatorLocationName(profileProperty);
+        if (!locationName || !(locationName in PLANT_CULTIVATOR_LOCATION_MAP)) {
+            continue;
+        }
+        const attrKey = PLANT_CULTIVATOR_LOCATION_MAP[locationName];
+        const subProfile = createPlantCultivatorSubProfile(
+            profile,
+            locationName,
+        );
+        mainProfile[attrKey] = subProfile;
+        locationProperties[attrKey] = subProfile.properties;
+    }
+    mainProfile._locationProperties = locationProperties;
+    mainProfile.generatePropertyMap();
+};
+
+const getPlantCultivatorLocationPropertyEntries = (
+    property:
+        | PlantCultivatorPropertyEntry
+        | PlantCultivatorPropertyEntry[]
+        | Record<string, unknown>[],
+    locationName: string | null,
+): PlantCultivatorPropertyEntry[] => {
+    if (!Array.isArray(property)) {
+        return [property];
+    }
+    return property.filter(
+        (locationProperty) =>
+            getPlantCultivatorLocationName(locationProperty) === locationName,
+    );
+};
+
+export class PlantCultivatorProfile extends ConnectDeviceProfile {
+    static _RESOURCE_MAP: ResourceMap = PLANT_CULTIVATOR_RESOURCE_MAP;
+    static _PROFILE: ProfileMap = PLANT_CULTIVATOR_PROFILE_MAP;
+    static _LOCATION_MAP: LocationMap = PLANT_CULTIVATOR_LOCATION_MAP;
+    static _CUSTOM_PROPERTIES: CustomProperties =
+        PLANT_CULTIVATOR_CUSTOM_PROPERTIES;
+
+    constructor(profile: Record<string, DynamicObjectOrStringArray>) {
         super(
             profile,
-            PlantCultivatorProfile._RESOURCE_MAP,
-            PlantCultivatorProfile._PROFILE,
-            PlantCultivatorProfile._LOCATION_MAP,
-            PlantCultivatorProfile._CUSTOM_PROPERTIES,
-            false,
-            true,
+            PLANT_CULTIVATOR_PROFILE_DEFINITION.resourceMap,
+            PLANT_CULTIVATOR_PROFILE_DEFINITION.profileMap,
+            PLANT_CULTIVATOR_PROFILE_DEFINITION.locationMap,
+            PLANT_CULTIVATOR_PROFILE_DEFINITION.customProperties,
+            PLANT_CULTIVATOR_PROFILE_DEFINITION.useExtensionProperty,
+            PLANT_CULTIVATOR_PROFILE_DEFINITION.useSubProfileOnly,
         );
-        const _locationProperties: Record<
-            string,
-            Record<string, string[]>
-        > = {};
-        for (const profileProperty of _.get(profile, "property", [])) {
-            const locationName = _.get(
-                profileProperty,
-                "location.locationName",
-            );
-            if (locationName in PlantCultivatorProfile._LOCATION_MAP) {
-                const attrKey =
-                    PlantCultivatorProfile._LOCATION_MAP[locationName];
-                const _subProfile = new PlantCultivatorSubProfile(
-                    profile,
-                    locationName,
-                );
-                this[attrKey] = _subProfile;
-                _locationProperties[attrKey] = _subProfile.properties;
-            }
-        }
-        this._locationProperties = _locationProperties;
-        this.generatePropertyMap();
+        initializePlantCultivatorLocationProfiles(this, profile);
     }
 }
 
 export class PlantCultivatorSubProfile extends ConnectDeviceProfile {
-    static _RESOURCE_MAP: ResourceMap = {
-        runState: "runState",
-        light: "light",
-        temperature: "temperature",
-    };
-
-    static _PROFILE: ProfileMap = {
-        runState: {
-            currentState: "currentState",
-            growthMode: "growthMode",
-            windVolume: "windVolume",
-        },
-        light: {
-            brightness: "brightness",
-            duration: "duration",
-            startHour: "startHour",
-            startMinute: "startMinute",
-        },
-        temperature: {
-            dayTargetTemperature: "dayTargetTemperature",
-            nightTargetTemperature: "nightTargetTemperature",
-            temperatureState: "temperatureState",
-        },
-    };
-    static _LOCATION_MAP: LocationMap = {};
+    static _RESOURCE_MAP: ResourceMap = PLANT_CULTIVATOR_SUB_RESOURCE_MAP;
+    static _PROFILE: ProfileMap = PLANT_CULTIVATOR_SUB_PROFILE_MAP;
+    static _LOCATION_MAP: LocationMap = PLANT_CULTIVATOR_SUB_LOCATION_MAP;
     static _CUSTOM_PROPERTIES: CustomProperties = [];
 
-    constructor(profile: Record<string, any>, locationName: string) {
+    constructor(
+        profile: Record<string, DynamicObjectOrStringArray>,
+        locationName: string,
+    ) {
         super(
             profile,
-            PlantCultivatorSubProfile._RESOURCE_MAP,
-            PlantCultivatorSubProfile._PROFILE,
-            PlantCultivatorSubProfile._LOCATION_MAP,
-            PlantCultivatorProfile._CUSTOM_PROPERTIES,
+            PLANT_CULTIVATOR_SUB_RESOURCE_MAP,
+            PLANT_CULTIVATOR_SUB_PROFILE_MAP,
+            PLANT_CULTIVATOR_SUB_LOCATION_MAP,
+            PLANT_CULTIVATOR_CUSTOM_PROPERTIES,
             false,
             false,
             locationName,
@@ -103,18 +167,30 @@ export class PlantCultivatorSubProfile extends ConnectDeviceProfile {
         this._locationName = locationName;
     }
 
-    generateProperties(property: Record<string, unknown>[]): void {
-        for (const locationProperty of property) {
-            if (
-                _.get(locationProperty, "location.locationName") !==
-                this._locationName
-            ) {
-                continue;
-            }
+    generateProperties(
+        property: PlantCultivatorPropertyEntry | PlantCultivatorPropertyEntry[],
+    ): void {
+        for (const locationProperty of getPlantCultivatorLocationPropertyEntries(
+            property,
+            this._locationName,
+        )) {
             super.generateProperties(locationProperty);
         }
     }
 }
+
+export const createPlantCultivatorSubProfile = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+    locationName: string,
+): ConnectDeviceProfile => {
+    return new PlantCultivatorSubProfile(profile, locationName);
+};
+
+export const createPlantCultivatorProfile = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+): ConnectDeviceProfile => {
+    return new PlantCultivatorProfile(profile);
+};
 
 export class PlantCultivatorSubDevice extends ConnectSubDevice {
     constructor(
@@ -156,7 +232,7 @@ export class PlantCultivatorDevice extends ConnectMainDevice {
         modelName: string,
         alias: string,
         reportable: boolean,
-        profile: Record<string, any>,
+        profile: Record<string, DynamicObjectOrStringArray>,
         energyProfile?: Record<string, unknown>,
     ) {
         super(
@@ -166,7 +242,7 @@ export class PlantCultivatorDevice extends ConnectMainDevice {
             modelName,
             alias,
             reportable,
-            new PlantCultivatorProfile(profile),
+            createPlantCultivatorProfile(profile),
             PlantCultivatorSubDevice,
             energyProfile,
         );
@@ -177,6 +253,6 @@ export class PlantCultivatorDevice extends ConnectMainDevice {
     }
 
     getSubDevice(locationName: string): ConnectSubDevice | null {
-        return super.getSubDevice(locationName);
+        return super.getSubDevice(locationName) as ConnectSubDevice | null;
     }
 }

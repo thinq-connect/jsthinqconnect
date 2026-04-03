@@ -3,9 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import * as _ from "lodash";
-import { ConnectBaseDevice, ConnectDeviceProfile } from "./ConnectDevice";
+import {
+    ConnectBaseDevice,
+    ConnectDeviceProfile,
+    ConnectDeviceProfileDefinition,
+    createConnectDeviceProfile,
+} from "./ConnectDevice";
 import { ResourceMap, ProfileMap } from "../types/Resources";
+import { DynamicObjectOrStringArray } from "../types/Devices";
 import { ThinQApi, ThinQApiResponse } from "../ThinQAPI";
 
 export class StylerProfile extends ConnectDeviceProfile {
@@ -33,6 +38,17 @@ export class StylerProfile extends ConnectDeviceProfile {
     }
 }
 
+export const STYLER_RESOURCE_MAP: ResourceMap = StylerProfile._RESOURCE_MAP;
+export const STYLER_PROFILE_MAP: ProfileMap = StylerProfile._PROFILE;
+export const STYLER_PROFILE_DEFINITION: ConnectDeviceProfileDefinition = {
+    resourceMap: STYLER_RESOURCE_MAP,
+    profileMap: STYLER_PROFILE_MAP,
+};
+export const createStylerProfile = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+): ConnectDeviceProfile =>
+    createConnectDeviceProfile(profile, STYLER_PROFILE_DEFINITION);
+
 export class StylerDevice extends ConnectBaseDevice {
     constructor(
         thinqApi: ThinQApi,
@@ -41,7 +57,7 @@ export class StylerDevice extends ConnectBaseDevice {
         modelName: string,
         alias: string,
         reportable: boolean,
-        profile: Record<string, any>,
+        profile: Record<string, DynamicObjectOrStringArray>,
         energyProfile?: Record<string, unknown>,
     ) {
         super(
@@ -51,7 +67,7 @@ export class StylerDevice extends ConnectBaseDevice {
             modelName,
             alias,
             reportable,
-            new StylerProfile(profile),
+            createStylerProfile(profile),
             undefined,
             undefined,
             energyProfile,

@@ -3,14 +3,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import _ from "lodash";
-import { ConnectBaseDevice, ConnectDeviceProfile } from "./ConnectDevice";
+import {
+    ConnectBaseDevice,
+    ConnectDeviceProfile,
+    ConnectDeviceProfileDefinition,
+    createConnectDeviceProfile,
+} from "./ConnectDevice";
 import {
     ResourceMap,
     ProfileMap,
     CustomProperties,
     LocationMap,
 } from "../types/Resources";
+import { DynamicObjectOrStringArray } from "../types/Devices";
 import { ThinQApi } from "../ThinQAPI";
 
 export class WaterPurifierProfile extends ConnectDeviceProfile {
@@ -39,6 +44,26 @@ export class WaterPurifierProfile extends ConnectDeviceProfile {
     }
 }
 
+export const WATER_PURIFIER_RESOURCE_MAP: ResourceMap =
+    WaterPurifierProfile._RESOURCE_MAP;
+export const WATER_PURIFIER_PROFILE_MAP: ProfileMap =
+    WaterPurifierProfile._PROFILE;
+export const WATER_PURIFIER_CUSTOM_PROPERTIES: CustomProperties =
+    WaterPurifierProfile._CUSTOM_PROPERTIES;
+export const WATER_PURIFIER_LOCATION_MAP: LocationMap =
+    WaterPurifierProfile._LOCATION_MAP;
+export const WATER_PURIFIER_PROFILE_DEFINITION: ConnectDeviceProfileDefinition =
+    {
+        resourceMap: WATER_PURIFIER_RESOURCE_MAP,
+        profileMap: WATER_PURIFIER_PROFILE_MAP,
+        locationMap: WATER_PURIFIER_LOCATION_MAP,
+        customProperties: WATER_PURIFIER_CUSTOM_PROPERTIES,
+    };
+export const createWaterPurifierProfile = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+): ConnectDeviceProfile =>
+    createConnectDeviceProfile(profile, WATER_PURIFIER_PROFILE_DEFINITION);
+
 export class WaterPurifierDevice extends ConnectBaseDevice {
     constructor(
         thinqApi: ThinQApi,
@@ -47,7 +72,7 @@ export class WaterPurifierDevice extends ConnectBaseDevice {
         modelName: string,
         alias: string,
         reportable: boolean,
-        profile: Record<string, any>,
+        profile: Record<string, DynamicObjectOrStringArray>,
         energyProfile?: Record<string, unknown>,
     ) {
         super(
@@ -57,7 +82,7 @@ export class WaterPurifierDevice extends ConnectBaseDevice {
             modelName,
             alias,
             reportable,
-            new WaterPurifierProfile(profile),
+            createWaterPurifierProfile(profile),
             undefined,
             undefined,
             energyProfile,

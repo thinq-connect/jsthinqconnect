@@ -3,14 +3,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import _ from "lodash";
-import { ConnectBaseDevice, ConnectDeviceProfile } from "./ConnectDevice";
+import {
+    ConnectBaseDevice,
+    ConnectDeviceProfile,
+    ConnectDeviceProfileDefinition,
+    createConnectDeviceProfile,
+} from "./ConnectDevice";
 import {
     ResourceMap,
     ProfileMap,
     CustomProperties,
     LocationMap,
 } from "../types/Resources";
+import { DynamicObjectOrStringArray } from "../types/Devices";
 import { ThinQApi, ThinQApiResponse } from "../ThinQAPI";
 
 export class HumidifierProfile extends ConnectDeviceProfile {
@@ -72,6 +77,24 @@ export class HumidifierProfile extends ConnectDeviceProfile {
     }
 }
 
+export const HUMIDIFIER_RESOURCE_MAP: ResourceMap =
+    HumidifierProfile._RESOURCE_MAP;
+export const HUMIDIFIER_PROFILE_MAP: ProfileMap = HumidifierProfile._PROFILE;
+export const HUMIDIFIER_CUSTOM_PROPERTIES: CustomProperties =
+    HumidifierProfile._CUSTOM_PROPERTIES;
+export const HUMIDIFIER_LOCATION_MAP: LocationMap =
+    HumidifierProfile._LOCATION_MAP;
+export const HUMIDIFIER_PROFILE_DEFINITION: ConnectDeviceProfileDefinition = {
+    resourceMap: HUMIDIFIER_RESOURCE_MAP,
+    profileMap: HUMIDIFIER_PROFILE_MAP,
+    locationMap: HUMIDIFIER_LOCATION_MAP,
+    customProperties: HUMIDIFIER_CUSTOM_PROPERTIES,
+};
+export const createHumidifierProfile = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+): ConnectDeviceProfile =>
+    createConnectDeviceProfile(profile, HUMIDIFIER_PROFILE_DEFINITION);
+
 export class HumidifierDevice extends ConnectBaseDevice {
     static _CUSTOM_SET_PROPERTY_NAME = {
         absoluteHourToStart: "absoluteTimeToStart",
@@ -88,7 +111,7 @@ export class HumidifierDevice extends ConnectBaseDevice {
         modelName: string,
         alias: string,
         reportable: boolean,
-        profile: Record<string, any>,
+        profile: Record<string, DynamicObjectOrStringArray>,
         energyProfile?: Record<string, unknown>,
     ) {
         super(
@@ -98,7 +121,7 @@ export class HumidifierDevice extends ConnectBaseDevice {
             modelName,
             alias,
             reportable,
-            new HumidifierProfile(profile),
+            createHumidifierProfile(profile),
             HumidifierDevice._CUSTOM_SET_PROPERTY_NAME,
             undefined,
             energyProfile,

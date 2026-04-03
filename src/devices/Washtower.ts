@@ -7,7 +7,7 @@ import _ from "lodash";
 import {
     ConnectBaseDevice,
     ConnectDeviceProfile,
-    ConnectSubDevice,
+    createConnectDeviceProfile,
 } from "./ConnectDevice";
 import {
     ResourceMap,
@@ -15,108 +15,236 @@ import {
     LocationMap,
     CustomProperties,
 } from "../types/Resources";
-import { DynamicObjectOrObjectArray } from "../types/Devices";
+import {
+    DynamicObjectOrObjectArray,
+    DynamicObjectOrStringArray,
+} from "../types/Devices";
 import { ThinQApi, ThinQApiResponse } from "../ThinQAPI";
 import { DryerDevice, DryerProfile } from "./Dryer";
 import { WasherSubDevice, WasherSubProfile } from "./Washer";
 
-class WashTowerProfile extends ConnectDeviceProfile {
-    static _RESOURCE_MAP: ResourceMap = {};
-    static _PROFILE: ProfileMap = {};
-    static _LOCATION_MAP: LocationMap = { DRYER: "dryer", WASHER: "washer" };
-    static _CUSTOM_PROPERTIES: CustomProperties = [];
-    constructor(profile: Record<string, any>) {
-        super(
-            profile,
-            WashTowerProfile._RESOURCE_MAP,
-            WashTowerProfile._PROFILE,
-            WashTowerProfile._LOCATION_MAP,
-            WashTowerProfile._CUSTOM_PROPERTIES,
-            false,
+const WASH_TOWER_RESOURCE_MAP: ResourceMap = {};
+const WASH_TOWER_PROFILE_MAP: ProfileMap = {};
+const WASH_TOWER_LOCATION_MAP: LocationMap = {
+    DRYER: "dryer",
+    WASHER: "washer",
+};
+const WASH_TOWER_CUSTOM_PROPERTIES: CustomProperties = [];
+type WashtowerPayloadKey = "washer" | "dryer";
+type WashtowerSubProfiles = Record<WashtowerPayloadKey, ConnectDeviceProfile>;
+type WashtowerSubDevices = {
+    dryer: DryerDeviceSingle;
+    washer: WasherDeviceSingle;
+};
+type WashtowerLocationProperties = Record<string, Record<string, string[]>>;
+const WASH_TOWER_KEYS: WashtowerPayloadKey[] = ["dryer", "washer"];
+
+const WASH_TOWER_PROFILE_DEFINITION = {
+    resourceMap: WASH_TOWER_RESOURCE_MAP,
+    profileMap: WASH_TOWER_PROFILE_MAP,
+    locationMap: WASH_TOWER_LOCATION_MAP,
+    customProperties: WASH_TOWER_CUSTOM_PROPERTIES,
+    useSubProfileOnly: true,
+};
+
+const getWashtowerChildProfile = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+    key: WashtowerPayloadKey,
+): Record<string, DynamicObjectOrStringArray> => {
+    return _.get(profile, key, {}) as Record<
+        string,
+        DynamicObjectOrStringArray
+    >;
+};
+
+const createWashtowerSubProfiles = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+): WashtowerSubProfiles => {
+    return {
+        washer: new WasherSubProfile(
+            getWashtowerChildProfile(profile, "washer"),
+            "WASHER",
             true,
-        );
-        const _locationProperties: Record<
-            string,
-            Record<string, string[]>
-        > = {};
-        for (const [locationName, attrKey] of _.toPairs(
-            WashTowerProfile._LOCATION_MAP,
-        )) {
-            const _subProfile =
-                locationName === "WASHER"
-                    ? new WasherSubProfile(
-                          _.get(profile, "washer", {}),
-                          "WASHER",
-                          true,
-                      )
-                    : new DryerProfile(_.get(profile, "dryer", {}));
-            this[attrKey] = _subProfile;
-            _locationProperties[attrKey] = _subProfile.properties;
-        }
-        this._locationProperties = _locationProperties;
-        this.generatePropertyMap();
+        ),
+        dryer: new DryerProfile(getWashtowerChildProfile(profile, "dryer")),
+    };
+};
+
+const initializeWashtowerLocationProfiles = (
+    mainProfile: ConnectDeviceProfile,
+    subProfiles: WashtowerSubProfiles,
+): void => {
+    const locationProperties: WashtowerLocationProperties = {};
+    for (const key of WASH_TOWER_KEYS) {
+        const subProfile = subProfiles[key];
+        mainProfile[key] = subProfile;
+        locationProperties[key] = subProfile.properties;
     }
-}
+    mainProfile._locationProperties = locationProperties;
+    mainProfile.generatePropertyMap();
+};
+
+const createWashtowerProfile = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+): ConnectDeviceProfile => {
+    const mainProfile = createConnectDeviceProfile(
+        profile,
+        WASH_TOWER_PROFILE_DEFINITION,
+    );
+    const subProfiles = createWashtowerSubProfiles(profile);
+    initializeWashtowerLocationProfiles(mainProfile, subProfiles);
+    return mainProfile;
+};
+
+const wrapWashtowerPayload = (
+    key: WashtowerPayloadKey,
+    payload: Record<string, unknown> | undefined,
+): Record<string, unknown> => {
+    return { [key]: { ...(payload || {}) } };
+};
+
+const executeWrappedWashtowerCommand = async (
+    device: ConnectBaseDevice,
+    key: WashtowerPayloadKey,
+    payload: Record<string, unknown> | undefined,
+): Promise<ThinQApiResponse> => {
+    return await device._doAttributeCommand(wrapWashtowerPayload(key, payload));
+};
+
+const doWrappedEnumCommand = async (
+    device: ConnectBaseDevice,
+    key: WashtowerPayloadKey,
+    attribute: string,
+    value: string,
+): Promise<ThinQApiResponse> => {
+    const payload = device.profiles.getEnumAttributePayload(attribute, value);
+    return await executeWrappedWashtowerCommand(device, key, payload);
+};
+
+const doWrappedRangeCommand = async (
+    device: ConnectBaseDevice,
+    key: WashtowerPayloadKey,
+    attribute: string,
+    value: number,
+): Promise<ThinQApiResponse> => {
+    const payload = device.profiles.getRangeAttributePayload(attribute, value);
+    return await executeWrappedWashtowerCommand(device, key, payload);
+};
+
+const applyWashtowerStatus = (
+    subDevice: ConnectBaseDevice,
+    status: DynamicObjectOrObjectArray,
+    isUpdated: boolean,
+): void => {
+    if (isUpdated) {
+        subDevice.updateStatus(status);
+        return;
+    }
+    subDevice.setStatus(status);
+};
+
+const fanOutWashtowerStatus = (
+    status: Record<string, DynamicObjectOrObjectArray>,
+    subDevices: WashtowerSubDevices,
+    isUpdated = false,
+): void => {
+    for (const key of WASH_TOWER_KEYS) {
+        applyWashtowerStatus(subDevices[key], _.get(status, key), isUpdated);
+    }
+};
 
 class WasherDeviceSingle extends WasherSubDevice {
     setWasherOperationMode = async (
         operation: string,
     ): Promise<ThinQApiResponse> => {
-        const payload = this.profiles.getEnumAttributePayload(
+        return await doWrappedEnumCommand(
+            this,
+            "washer",
             "washerOperationMode",
             operation,
         );
-        return await this._doAttributeCommand({ washer: { ...payload } });
     };
 
     setRelativeHourToStart = async (
         hour: number,
     ): Promise<ThinQApiResponse> => {
-        const payload = this.profiles.getRangeAttributePayload(
+        return await doWrappedRangeCommand(
+            this,
+            "washer",
             "relativeHourToStart",
             hour,
         );
-        return await this._doAttributeCommand({ washer: { ...payload } });
     };
 
     setRelativeHourToStop = async (hour: number): Promise<ThinQApiResponse> => {
-        const payload = this.profiles.getRangeAttributePayload(
+        return await doWrappedRangeCommand(
+            this,
+            "washer",
             "relativeHourToStop",
             hour,
         );
-        return await this._doAttributeCommand({ washer: { ...payload } });
     };
 }
 
 class DryerDeviceSingle extends DryerDevice {
-    setDryerOperationMode = async (
-        operation: string,
-    ): Promise<ThinQApiResponse> => {
-        const payload = this.profiles.getEnumAttributePayload(
-            "dryerOperationMode",
-            operation,
-        );
-        return await this._doAttributeCommand({ dryer: { ...payload } });
-    };
-
-    setRelativeHourToStart = async (
-        hour: number,
-    ): Promise<ThinQApiResponse> => {
-        const payload = this.profiles.getRangeAttributePayload(
-            "relativeHourToStart",
-            hour,
-        );
-        return await this._doAttributeCommand({ dryer: { ...payload } });
-    };
-
-    setRelativeHourToStop = async (hour: number): Promise<ThinQApiResponse> => {
-        const payload = this.profiles.getRangeAttributePayload(
-            "relativeHourToStop",
-            hour,
-        );
-        return await this._doAttributeCommand({ dryer: { ...payload } });
-    };
+    async _doAttributeCommand(
+        payload: Record<string, unknown>,
+    ): Promise<ThinQApiResponse> {
+        return await executeWrappedWashtowerCommand(this, "dryer", payload);
+    }
 }
+
+const createWashtowerSubDevices = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+    mainProfile: ConnectDeviceProfile,
+    thinqApi: ThinQApi,
+    deviceId: string,
+    deviceType: string,
+    modelName: string,
+    alias: string,
+    reportable: boolean,
+    energyProfile?: Record<string, unknown>,
+): WashtowerSubDevices => {
+    const dryer = new DryerDeviceSingle(
+        thinqApi,
+        deviceId,
+        deviceType,
+        modelName,
+        alias,
+        reportable,
+        getWashtowerChildProfile(profile, "dryer"),
+        energyProfile,
+    );
+    const washerProfile = mainProfile.getSubProfile("washer");
+    if (!washerProfile) {
+        throw new Error("Washtower washer profile is required");
+    }
+    const washer = new WasherDeviceSingle(
+        washerProfile,
+        "",
+        thinqApi,
+        deviceId,
+        deviceType,
+        modelName,
+        alias,
+        reportable,
+        true,
+        energyProfile,
+    );
+    return { dryer, washer };
+};
+
+const registerWashtowerSubDevices = (
+    mainDevice: WashtowerDevice,
+    subDevices: WashtowerSubDevices,
+): void => {
+    mainDevice._subDevices = {};
+    for (const key of WASH_TOWER_KEYS) {
+        const subDevice = subDevices[key];
+        mainDevice[key] = subDevice;
+        mainDevice._subDevices[key] = subDevice;
+    }
+};
 
 export class WashtowerDevice extends ConnectBaseDevice {
     constructor(
@@ -126,7 +254,7 @@ export class WashtowerDevice extends ConnectBaseDevice {
         modelName: string,
         alias: string,
         reportable: boolean,
-        profile: Record<string, any>,
+        profile: Record<string, DynamicObjectOrStringArray>,
         energyProfile?: Record<string, unknown>,
     ) {
         super(
@@ -136,55 +264,40 @@ export class WashtowerDevice extends ConnectBaseDevice {
             modelName,
             alias,
             reportable,
-            new WashTowerProfile(profile),
+            createWashtowerProfile(profile),
             undefined,
             undefined,
             energyProfile,
         );
-        this._subDevices = {};
-        this.dryer = new DryerDeviceSingle(
+        const washtowerSubDevices = createWashtowerSubDevices(
+            profile,
+            this.profiles,
             thinqApi,
             deviceId,
             deviceType,
             modelName,
             alias,
             reportable,
-            _.get(profile, "dryer", {}),
             energyProfile,
         );
-        const washerDeviceSingle = this.profiles.getSubProfile("washer");
-        if (washerDeviceSingle)
-            this.washer = new WasherDeviceSingle(
-                washerDeviceSingle,
-                "",
-                thinqApi,
-                deviceId,
-                deviceType,
-                modelName,
-                alias,
-                reportable,
-                true,
-                energyProfile,
-            );
-        this._subDevices["dryer"] = this.dryer;
-        this._subDevices["washer"] = this.washer;
+        registerWashtowerSubDevices(this, washtowerSubDevices);
     }
 
     setStatus(status: Record<string, DynamicObjectOrObjectArray>): void {
         super.setStatus(status);
-        for (const [deviceType, subDevice] of _.toPairs(this._subDevices)) {
-            subDevice.setStatus(_.get(status, deviceType));
-        }
+        fanOutWashtowerStatus(status, this._subDevices as WashtowerSubDevices);
     }
 
     updateStatus(status: Record<string, DynamicObjectOrObjectArray>): void {
         super.updateStatus(status);
-        for (const [deviceType, subDevice] of _.toPairs(this._subDevices)) {
-            subDevice.updateStatus(_.get(status, deviceType));
-        }
+        fanOutWashtowerStatus(
+            status,
+            this._subDevices as WashtowerSubDevices,
+            true,
+        );
     }
 
-    getSubDevice = (locationName: string): ConnectSubDevice | null => {
+    getSubDevice = (locationName: string): ConnectBaseDevice | null => {
         return super.getSubDevice(locationName);
     };
 }

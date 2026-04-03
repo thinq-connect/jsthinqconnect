@@ -3,56 +3,81 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import _ from "lodash";
-import { ConnectBaseDevice, ConnectDeviceProfile } from "./ConnectDevice";
+import {
+    ConnectBaseDevice,
+    ConnectDeviceProfile,
+    ConnectDeviceProfileDefinition,
+    createConnectDeviceProfile,
+} from "./ConnectDevice";
 import {
     ResourceMap,
     ProfileMap,
     CustomProperties,
     LocationMap,
 } from "../types/Resources";
+import { DynamicObjectOrStringArray } from "../types/Devices";
 import { ThinQApi, ThinQApiResponse } from "../ThinQAPI";
 
-export class DishWasherProfile extends ConnectDeviceProfile {
-    static _RESOURCE_MAP: ResourceMap = {
-        runState: "runState",
-        dishWashingStatus: "dishWashingStatus",
-        preference: "preference",
-        doorStatus: "doorStatus",
-        operation: "operation",
-        remoteControlEnable: "remoteControlEnable",
-        timer: "timer",
-        dishWashingCourse: "dishWashingCourse",
-    };
-    static _PROFILE: ProfileMap = {
-        runState: { currentState: "currentState" },
-        dishWashingStatus: { rinseRefill: "rinseRefill" },
-        preference: {
-            rinseLevel: "rinseLevel",
-            softeningLevel: "softeningLevel",
-            mCReminder: "machineCleanReminder",
-            signalLevel: "signalLevel",
-            cleanLReminder: "cleanLightReminder",
-        },
-        doorStatus: { doorState: "doorState" },
-        operation: { dishWasherOperationMode: "dishWasherOperationMode" },
-        remoteControlEnable: { remoteControlEnabled: "remoteControlEnabled" },
-        timer: {
-            relativeHourToStart: "relativeHourToStart",
-            relativeMinuteToStart: "relativeMinuteToStart",
-            remainHour: "remainHour",
-            remainMinute: "remainMinute",
-            totalHour: "totalHour",
-            totalMinute: "totalMinute",
-        },
-        dishWashingCourse: {
-            currentDishWashingCourse: "currentDishWashingCourse",
-        },
-    };
-    static _CUSTOM_PROPERTIES: CustomProperties = [];
-    static _LOCATION_MAP: LocationMap = {};
+export const DISH_WASHER_RESOURCE_MAP: ResourceMap = {
+    runState: "runState",
+    dishWashingStatus: "dishWashingStatus",
+    preference: "preference",
+    doorStatus: "doorStatus",
+    operation: "operation",
+    remoteControlEnable: "remoteControlEnable",
+    timer: "timer",
+    dishWashingCourse: "dishWashingCourse",
+};
 
-    constructor(profile: Record<string, any>) {
+export const DISH_WASHER_PROFILE_MAP: ProfileMap = {
+    runState: { currentState: "currentState" },
+    dishWashingStatus: { rinseRefill: "rinseRefill" },
+    preference: {
+        rinseLevel: "rinseLevel",
+        softeningLevel: "softeningLevel",
+        mCReminder: "machineCleanReminder",
+        signalLevel: "signalLevel",
+        cleanLReminder: "cleanLightReminder",
+    },
+    doorStatus: { doorState: "doorState" },
+    operation: { dishWasherOperationMode: "dishWasherOperationMode" },
+    remoteControlEnable: { remoteControlEnabled: "remoteControlEnabled" },
+    timer: {
+        relativeHourToStart: "relativeHourToStart",
+        relativeMinuteToStart: "relativeMinuteToStart",
+        remainHour: "remainHour",
+        remainMinute: "remainMinute",
+        totalHour: "totalHour",
+        totalMinute: "totalMinute",
+    },
+    dishWashingCourse: {
+        currentDishWashingCourse: "currentDishWashingCourse",
+    },
+};
+
+export const DISH_WASHER_CUSTOM_PROPERTIES: CustomProperties = [];
+export const DISH_WASHER_LOCATION_MAP: LocationMap = {};
+
+export const DISH_WASHER_PROFILE_DEFINITION: ConnectDeviceProfileDefinition = {
+    resourceMap: DISH_WASHER_RESOURCE_MAP,
+    profileMap: DISH_WASHER_PROFILE_MAP,
+    locationMap: DISH_WASHER_LOCATION_MAP,
+    customProperties: DISH_WASHER_CUSTOM_PROPERTIES,
+};
+
+export const createDishWasherProfile = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+): ConnectDeviceProfile => {
+    return createConnectDeviceProfile(profile, DISH_WASHER_PROFILE_DEFINITION);
+};
+
+export class DishWasherProfile extends ConnectDeviceProfile {
+    static _RESOURCE_MAP: ResourceMap = DISH_WASHER_RESOURCE_MAP;
+    static _PROFILE: ProfileMap = DISH_WASHER_PROFILE_MAP;
+    static _CUSTOM_PROPERTIES: CustomProperties = DISH_WASHER_CUSTOM_PROPERTIES;
+    static _LOCATION_MAP: LocationMap = DISH_WASHER_LOCATION_MAP;
+
+    constructor(profile: Record<string, DynamicObjectOrStringArray>) {
         super(
             profile,
             DishWasherProfile._RESOURCE_MAP,
@@ -71,7 +96,7 @@ export class DishWasherDevice extends ConnectBaseDevice {
         modelName: string,
         alias: string,
         reportable: boolean,
-        profile: Record<string, any>,
+        profile: Record<string, DynamicObjectOrStringArray>,
         energyProfile?: Record<string, unknown>,
     ) {
         super(
@@ -81,7 +106,7 @@ export class DishWasherDevice extends ConnectBaseDevice {
             modelName,
             alias,
             reportable,
-            new DishWasherProfile(profile),
+            createDishWasherProfile(profile),
             undefined,
             undefined,
             energyProfile,

@@ -3,14 +3,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import _ from "lodash";
-import { ConnectBaseDevice, ConnectDeviceProfile } from "./ConnectDevice";
+import {
+    ConnectBaseDevice,
+    ConnectDeviceProfile,
+    ConnectDeviceProfileDefinition,
+    createConnectDeviceProfile,
+} from "./ConnectDevice";
 import {
     ResourceMap,
     ProfileMap,
     CustomProperties,
     LocationMap,
 } from "../types/Resources";
+import { DynamicObjectOrStringArray } from "../types/Devices";
 import { ThinQApi, ThinQApiResponse } from "../ThinQAPI";
 
 export class AirPurifierProfile extends ConnectDeviceProfile {
@@ -18,6 +23,7 @@ export class AirPurifierProfile extends ConnectDeviceProfile {
         airPurifierJobMode: "airPurifierJobMode",
         operation: "operation",
         timer: "timer",
+        sleepTimer: "sleepTimer",
         airFlow: "airFlow",
         airQualitySensor: "airQualitySensor",
         filterInfo: "filterInfo",
@@ -34,12 +40,19 @@ export class AirPurifierProfile extends ConnectDeviceProfile {
             absoluteHourToStop: "absoluteHourToStop",
             absoluteMinuteToStop: "absoluteMinuteToStop",
         },
+        sleepTimer: {
+            relativeHourToStop: "sleepTimerRelativeHourToStop",
+            relativeMinuteToStop: "sleepTimerRelativeMinuteToStop",
+        },
         airFlow: { windStrength: "windStrength" },
         airQualitySensor: {
             monitoringEnabled: "monitoringEnabled",
             PM1: "pm1",
+            PM1Level: "pm1Level",
             PM2: "pm2",
+            PM2Level: "pm2Level",
             PM10: "pm10",
+            PM10Level: "pm10Level",
             odor: "odor",
             odorLevel: "odorLevel",
             humidity: "humidity",
@@ -58,12 +71,49 @@ export class AirPurifierProfile extends ConnectDeviceProfile {
         super(
             profile,
             AirPurifierProfile._RESOURCE_MAP,
-            AirPurifierProfile._PROFILE,
+            getAirPurifierProfileMap(profile),
             AirPurifierProfile._LOCATION_MAP,
             AirPurifierProfile._CUSTOM_PROPERTIES,
         );
     }
 }
+
+const getAirPurifierProfileMap = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+): ProfileMap => {
+    const windStrengthKey =
+        ConnectDeviceProfile.prototype._getPreferredPropertyKey(
+            profile,
+            "airFlow",
+            ["windStrengthDetail", "windStrength"],
+        );
+
+    return {
+        ...AirPurifierProfile._PROFILE,
+        airFlow: { [windStrengthKey]: "windStrength" },
+    };
+};
+
+export const AIR_PURIFIER_RESOURCE_MAP: ResourceMap =
+    AirPurifierProfile._RESOURCE_MAP;
+export const AIR_PURIFIER_PROFILE_MAP: ProfileMap = AirPurifierProfile._PROFILE;
+export const AIR_PURIFIER_CUSTOM_PROPERTIES: CustomProperties =
+    AirPurifierProfile._CUSTOM_PROPERTIES;
+export const AIR_PURIFIER_LOCATION_MAP: LocationMap =
+    AirPurifierProfile._LOCATION_MAP;
+export const AIR_PURIFIER_PROFILE_DEFINITION: ConnectDeviceProfileDefinition = {
+    resourceMap: AIR_PURIFIER_RESOURCE_MAP,
+    profileMap: AIR_PURIFIER_PROFILE_MAP,
+    locationMap: AIR_PURIFIER_LOCATION_MAP,
+    customProperties: AIR_PURIFIER_CUSTOM_PROPERTIES,
+};
+export const createAirPurifierProfile = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+): ConnectDeviceProfile =>
+    createConnectDeviceProfile(profile, {
+        ...AIR_PURIFIER_PROFILE_DEFINITION,
+        profileMap: getAirPurifierProfileMap(profile),
+    });
 
 export class AirPurifierDevice extends ConnectBaseDevice {
     static _CUSTOM_SET_PROPERTY_NAME = {
@@ -71,6 +121,8 @@ export class AirPurifierDevice extends ConnectBaseDevice {
         absoluteMinuteToStart: "absoluteTimeToStart",
         absoluteHourToStop: "absoluteTimeToStop",
         absoluteMinuteToStop: "absoluteTimeToStop",
+        sleepTimerRelativeHourToStop: "sleepTimerRelativeTimeToStop",
+        sleepTimerRelativeMinuteToStop: "sleepTimerRelativeTimeToStop",
     };
 
     constructor(
@@ -80,7 +132,7 @@ export class AirPurifierDevice extends ConnectBaseDevice {
         modelName: string,
         alias: string,
         reportable: boolean,
-        profile: Record<string, any>,
+        profile: Record<string, DynamicObjectOrStringArray>,
         energyProfile?: Record<string, unknown>,
     ) {
         super(
@@ -90,7 +142,7 @@ export class AirPurifierDevice extends ConnectBaseDevice {
             modelName,
             alias,
             reportable,
-            new AirPurifierProfile(profile),
+            createAirPurifierProfile(profile),
             AirPurifierDevice._CUSTOM_SET_PROPERTY_NAME,
             undefined,
             energyProfile,
@@ -133,6 +185,14 @@ export class AirPurifierDevice extends ConnectBaseDevice {
         return await this.doMultiAttributeCommand({
             absoluteHourToStop: hour,
             absoluteMinuteToStop: minute,
+        });
+    };
+
+    setSleepTimerRelativeTimeToStop = async (
+        hour: number,
+    ): Promise<ThinQApiResponse> => {
+        return await this.doMultiAttributeCommand({
+            sleepTimerRelativeHourToStop: hour,
         });
     };
 

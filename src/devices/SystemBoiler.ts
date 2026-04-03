@@ -7,8 +7,14 @@ import _ from "lodash";
 import {
     ConnectBaseDevice,
     ConnectDeviceProfile,
+    ConnectDeviceProfileDefinition,
+    createConnectDeviceProfile,
     READABILITY,
     WRITABILITY,
+    CustomResourcePropertiesHandler,
+    CustomAttributePayloadHandler,
+    CustomAttributeWritableHandler,
+    CustomStatusResourceHandler,
 } from "./ConnectDevice";
 import {
     ResourceMap,
@@ -16,97 +22,95 @@ import {
     CustomProperties,
     LocationMap,
 } from "../types/Resources";
-import {
-    DynamicObjectOrObjectArray,
-    DynamicObjectOrStringArray,
-    AttributePayload,
-} from "../types/Devices";
+import { DynamicObjectOrStringArray, AttributePayload } from "../types/Devices";
 import { ThinQApi, ThinQApiResponse } from "../ThinQAPI";
 
-export class SystemBoilerProfile extends ConnectDeviceProfile {
-    static _RESOURCE_MAP: ResourceMap = {
-        boilerJobMode: "boilerJobMode",
-        operation: "operation",
-        hotWaterTemperatureInUnits: "hotWaterTemperature",
-        roomTemperatureInUnits: "roomTemperature",
-    };
-    static _PROFILE: ProfileMap = {
-        boilerJobMode: { currentJobMode: "currentJobMode" },
-        operation: {
-            boilerOperationMode: "boilerOperationMode",
-            hotWaterMode: "hotWaterMode",
-            roomTempMode: "roomTempMode",
-            roomWaterMode: "roomWaterMode",
-        },
-        hotWaterTemperatureInUnits: {
-            currentTemperatureC: "hotWaterCurrentTemperatureC",
-            currentTemperatureF: "hotWaterCurrentTemperatureF",
-            targetTemperatureC: "hotWaterTargetTemperatureC",
-            targetTemperatureF: "hotWaterTargetTemperatureF",
-            maxTemperatureC: "hotWaterMaxTemperatureC",
-            maxTemperatureF: "hotWaterMaxTemperatureF",
-            minTemperatureC: "hotWaterMinTemperatureC",
-            minTemperatureF: "hotWaterMinTemperatureF",
-            unit: "hotWaterTemperatureUnit",
-        },
-        roomTemperatureInUnits: {
-            currentTemperatureC: "roomCurrentTemperatureC",
-            currentTemperatureF: "roomCurrentTemperatureF",
-            airCurrentTemperatureC: "roomAirCurrentTemperatureC",
-            airCurrentTemperatureF: "roomAirCurrentTemperatureF",
-            outWaterCurrentTemperatureC: "roomOutWaterCurrentTemperatureC",
-            outWaterCurrentTemperatureF: "roomOutWaterCurrentTemperatureF",
-            inWaterCurrentTemperatureC: "roomInWaterCurrentTemperatureC",
-            inWaterCurrentTemperatureF: "roomInWaterCurrentTemperatureF",
-            targetTemperatureC: "roomTargetTemperatureC",
-            targetTemperatureF: "roomTargetTemperatureF",
-            airCoolTargetTemperatureC: "roomAirCoolTargetTemperatureC",
-            airCoolTargetTemperatureF: "roomAirCoolTargetTemperatureF",
-            airHeatTargetTemperatureC: "roomAirHeatTargetTemperatureC",
-            airHeatTargetTemperatureF: "roomAirHeatTargetTemperatureF",
-            waterCoolTargetTemperatureC: "roomWaterCoolTargetTemperatureC",
-            waterCoolTargetTemperatureF: "roomWaterCoolTargetTemperatureF",
-            waterHeatTargetTemperatureC: "roomWaterHeatTargetTemperatureC",
-            waterHeatTargetTemperatureF: "roomWaterHeatTargetTemperatureF",
-            airHeatMaxTemperatureC: "roomAirHeatMaxTemperatureC",
-            airHeatMaxTemperatureF: "roomAirHeatMaxTemperatureF",
-            airHeatMinTemperatureC: "roomAirHeatMinTemperatureC",
-            airHeatMinTemperatureF: "roomAirHeatMinTemperatureF",
-            airCoolMaxTemperatureC: "roomAirCoolMaxTemperatureC",
-            airCoolMaxTemperatureF: "roomAirCoolMaxTemperatureF",
-            airCoolMinTemperatureC: "roomAirCoolMinTemperatureC",
-            airCoolMinTemperatureF: "roomAirCoolMinTemperatureF",
-            waterHeatMaxTemperatureC: "roomWaterHeatMaxTemperatureC",
-            waterHeatMaxTemperatureF: "roomWaterHeatMaxTemperatureF",
-            waterHeatMinTemperatureC: "roomWaterHeatMinTemperatureC",
-            waterHeatMinTemperatureF: "roomWaterHeatMinTemperatureF",
-            waterCoolMaxTemperatureC: "roomWaterCoolMaxTemperatureC",
-            waterCoolMaxTemperatureF: "roomWaterCoolMaxTemperatureF",
-            waterCoolMinTemperatureC: "roomWaterCoolMinTemperatureC",
-            waterCoolMinTemperatureF: "roomWaterCoolMinTemperatureF",
-            unit: "roomTemperatureUnit",
-        },
-    };
-    static _CUSTOM_PROPERTIES: CustomProperties = [
-        "hotWaterTemperatureInUnits",
-        "roomTemperatureInUnits",
-    ];
-    static _LOCATION_MAP: LocationMap = {};
+export const SYSTEM_BOILER_RESOURCE_MAP: ResourceMap = {
+    boilerJobMode: "boilerJobMode",
+    operation: "operation",
+    hotWaterTemperatureInUnits: "hotWaterTemperature",
+    roomTemperatureInUnits: "roomTemperature",
+};
+export const SYSTEM_BOILER_PROFILE_MAP: ProfileMap = {
+    boilerJobMode: { currentJobMode: "currentJobMode" },
+    operation: {
+        boilerOperationMode: "boilerOperationMode",
+        hotWaterMode: "hotWaterMode",
+        roomTempMode: "roomTempMode",
+        roomWaterMode: "roomWaterMode",
+    },
+    hotWaterTemperatureInUnits: {
+        currentTemperatureC: "hotWaterCurrentTemperatureC",
+        currentTemperatureF: "hotWaterCurrentTemperatureF",
+        targetTemperatureC: "hotWaterTargetTemperatureC",
+        targetTemperatureF: "hotWaterTargetTemperatureF",
+        maxTemperatureC: "hotWaterMaxTemperatureC",
+        maxTemperatureF: "hotWaterMaxTemperatureF",
+        minTemperatureC: "hotWaterMinTemperatureC",
+        minTemperatureF: "hotWaterMinTemperatureF",
+        unit: "hotWaterTemperatureUnit",
+    },
+    roomTemperatureInUnits: {
+        currentTemperatureC: "roomCurrentTemperatureC",
+        currentTemperatureF: "roomCurrentTemperatureF",
+        airCurrentTemperatureC: "roomAirCurrentTemperatureC",
+        airCurrentTemperatureF: "roomAirCurrentTemperatureF",
+        outWaterCurrentTemperatureC: "roomOutWaterCurrentTemperatureC",
+        outWaterCurrentTemperatureF: "roomOutWaterCurrentTemperatureF",
+        inWaterCurrentTemperatureC: "roomInWaterCurrentTemperatureC",
+        inWaterCurrentTemperatureF: "roomInWaterCurrentTemperatureF",
+        targetTemperatureC: "roomTargetTemperatureC",
+        targetTemperatureF: "roomTargetTemperatureF",
+        airCoolTargetTemperatureC: "roomAirCoolTargetTemperatureC",
+        airCoolTargetTemperatureF: "roomAirCoolTargetTemperatureF",
+        airHeatTargetTemperatureC: "roomAirHeatTargetTemperatureC",
+        airHeatTargetTemperatureF: "roomAirHeatTargetTemperatureF",
+        waterCoolTargetTemperatureC: "roomWaterCoolTargetTemperatureC",
+        waterCoolTargetTemperatureF: "roomWaterCoolTargetTemperatureF",
+        waterHeatTargetTemperatureC: "roomWaterHeatTargetTemperatureC",
+        waterHeatTargetTemperatureF: "roomWaterHeatTargetTemperatureF",
+        airHeatMaxTemperatureC: "roomAirHeatMaxTemperatureC",
+        airHeatMaxTemperatureF: "roomAirHeatMaxTemperatureF",
+        airHeatMinTemperatureC: "roomAirHeatMinTemperatureC",
+        airHeatMinTemperatureF: "roomAirHeatMinTemperatureF",
+        airCoolMaxTemperatureC: "roomAirCoolMaxTemperatureC",
+        airCoolMaxTemperatureF: "roomAirCoolMaxTemperatureF",
+        airCoolMinTemperatureC: "roomAirCoolMinTemperatureC",
+        airCoolMinTemperatureF: "roomAirCoolMinTemperatureF",
+        waterHeatMaxTemperatureC: "roomWaterHeatMaxTemperatureC",
+        waterHeatMaxTemperatureF: "roomWaterHeatMaxTemperatureF",
+        waterHeatMinTemperatureC: "roomWaterHeatMinTemperatureC",
+        waterHeatMinTemperatureF: "roomWaterHeatMinTemperatureF",
+        waterCoolMaxTemperatureC: "roomWaterCoolMaxTemperatureC",
+        waterCoolMaxTemperatureF: "roomWaterCoolMaxTemperatureF",
+        waterCoolMinTemperatureC: "roomWaterCoolMinTemperatureC",
+        waterCoolMinTemperatureF: "roomWaterCoolMinTemperatureF",
+        unit: "roomTemperatureUnit",
+    },
+};
+export const SYSTEM_BOILER_CUSTOM_PROPERTIES: CustomProperties = [
+    "hotWaterTemperatureInUnits",
+    "roomTemperatureInUnits",
+];
+export const SYSTEM_BOILER_LOCATION_MAP: LocationMap = {};
 
-    checkAttributeWritable(propAttr: string): boolean {
-        return (
+export const systemBoilerCustomAttributeWritableHandler: CustomAttributeWritableHandler =
+    (propAttr, profile): boolean | null => {
+        if (
             _.includes(
                 ["hotWaterTemperatureUnit", "roomTemperatureUnit"],
                 propAttr,
-            ) || (this._getPropAttr(propAttr)[WRITABILITY] as boolean)
-        );
-    }
+            )
+        ) {
+            return true;
+        }
+        const value = profile._getPropAttr(propAttr)[WRITABILITY];
+        return typeof value === "boolean" ? value : null;
+    };
 
-    _getAttributePayload(
-        attribute: string,
-        value: string | number | boolean,
-    ): AttributePayload | undefined {
-        for (const [resource, props] of _.toPairs(this._PROFILE)) {
+export const systemBoilerCustomAttributePayloadHandler: CustomAttributePayloadHandler =
+    (attribute, value, profile): AttributePayload | undefined => {
+        for (const [resource, props] of _.toPairs(profile.getProfile())) {
             for (const [propKey, propAttr] of _.toPairs(props)) {
                 if (propAttr === attribute) {
                     return !_.includes(["C", "F"], propKey[propKey.length - 1])
@@ -123,16 +127,13 @@ export class SystemBoilerProfile extends ConnectDeviceProfile {
                 }
             }
         }
-    }
+    };
 
-    _generateCustomResourceProperties(
-        resourceKey: string,
-        resourceProperty: DynamicObjectOrObjectArray,
-        props: Record<string, string>,
-    ): [string[], string[]] {
+export const systemBoilerCustomResourcePropertiesHandler: CustomResourcePropertiesHandler =
+    (resourceKey, resourceProperty, props, profile): [string[], string[]] => {
         const readableProps: string[] = [];
         const writableProps: string[] = [];
-        if (!_.includes(this._CUSTOM_PROPERTIES, resourceKey)) {
+        if (!_.includes(SYSTEM_BOILER_CUSTOM_PROPERTIES, resourceKey)) {
             return [readableProps, writableProps];
         }
 
@@ -144,8 +145,8 @@ export class SystemBoilerProfile extends ConnectDeviceProfile {
         for (const temperatures of temperatureArray) {
             const unit = String(temperatures["unit"]);
             for (const [propKey, propAttr] of _.toPairs(props)) {
-                if (propKey[propKey.length - 1] != unit) continue;
-                const prop = this._getProperties(
+                if (propKey[propKey.length - 1] !== unit) continue;
+                const prop = profile._getProperties(
                     temperatures as Record<string, DynamicObjectOrStringArray>,
                     propKey.slice(0, -1),
                 );
@@ -155,70 +156,74 @@ export class SystemBoilerProfile extends ConnectDeviceProfile {
                 if (prop[WRITABILITY] === true) {
                     writableProps.push(propAttr);
                 }
-                this._setPropAttr(propAttr, prop);
+                profile._setPropAttr(propAttr, prop);
             }
             units.push(unit);
         }
 
         const propAttr = props["unit"];
-        const prop = this._getReadOnlyEnumProperty(units);
+        const prop = profile._getReadOnlyEnumProperty(units);
         if (prop[READABILITY] === true) {
             readableProps.push(propAttr);
         }
         if (prop[WRITABILITY] === true) {
             writableProps.push(propAttr);
         }
-        this._setPropAttr(propAttr, prop);
+        profile._setPropAttr(propAttr, prop);
 
         return [readableProps, writableProps];
-    }
+    };
 
-    constructor(profile: Record<string, any>) {
+export const SYSTEM_BOILER_PROFILE_DEFINITION: ConnectDeviceProfileDefinition =
+    {
+        resourceMap: SYSTEM_BOILER_RESOURCE_MAP,
+        profileMap: SYSTEM_BOILER_PROFILE_MAP,
+        locationMap: SYSTEM_BOILER_LOCATION_MAP,
+        customProperties: SYSTEM_BOILER_CUSTOM_PROPERTIES,
+        customResourcePropertiesHandler:
+            systemBoilerCustomResourcePropertiesHandler,
+        customAttributePayloadHandler:
+            systemBoilerCustomAttributePayloadHandler,
+        customAttributeWritableHandler:
+            systemBoilerCustomAttributeWritableHandler,
+    };
+
+export class SystemBoilerProfile extends ConnectDeviceProfile {
+    static _RESOURCE_MAP: ResourceMap = SYSTEM_BOILER_RESOURCE_MAP;
+    static _PROFILE: ProfileMap = SYSTEM_BOILER_PROFILE_MAP;
+    static _CUSTOM_PROPERTIES: CustomProperties =
+        SYSTEM_BOILER_CUSTOM_PROPERTIES;
+    static _LOCATION_MAP: LocationMap = SYSTEM_BOILER_LOCATION_MAP;
+
+    constructor(profile: Record<string, DynamicObjectOrStringArray>) {
         super(
             profile,
-            SystemBoilerProfile._RESOURCE_MAP,
-            SystemBoilerProfile._PROFILE,
-            SystemBoilerProfile._LOCATION_MAP,
-            SystemBoilerProfile._CUSTOM_PROPERTIES,
+            SYSTEM_BOILER_PROFILE_DEFINITION.resourceMap,
+            SYSTEM_BOILER_PROFILE_DEFINITION.profileMap,
+            SYSTEM_BOILER_PROFILE_DEFINITION.locationMap,
+            SYSTEM_BOILER_PROFILE_DEFINITION.customProperties,
+            SYSTEM_BOILER_PROFILE_DEFINITION.useExtensionProperty,
+            SYSTEM_BOILER_PROFILE_DEFINITION.useSubProfileOnly,
+            SYSTEM_BOILER_PROFILE_DEFINITION.locationName,
+            SYSTEM_BOILER_PROFILE_DEFINITION.useNotification,
+            SYSTEM_BOILER_PROFILE_DEFINITION.customResourcePropertiesHandler,
+            SYSTEM_BOILER_PROFILE_DEFINITION.customAttributePayloadHandler,
+            SYSTEM_BOILER_PROFILE_DEFINITION.customAttributeWritableHandler,
         );
     }
 }
 
-export class SystemBoilerDevice extends ConnectBaseDevice {
-    constructor(
-        thinqApi: ThinQApi,
-        deviceId: string,
-        deviceType: string,
-        modelName: string,
-        alias: string,
-        reportable: boolean,
-        profile: Record<string, any>,
-        energyProfile?: Record<string, unknown>,
-    ) {
-        super(
-            thinqApi,
-            deviceId,
-            deviceType,
-            modelName,
-            alias,
-            reportable,
-            new SystemBoilerProfile(profile),
-            undefined,
-            undefined,
-            energyProfile,
-        );
-    }
+export const createSystemBoilerProfile = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+): ConnectDeviceProfile => {
+    return createConnectDeviceProfile(
+        profile,
+        SYSTEM_BOILER_PROFILE_DEFINITION,
+    );
+};
 
-    get profiles(): ConnectDeviceProfile {
-        return this._profiles;
-    }
-
-    _setCustomResources(
-        propKey: string,
-        attribute: string,
-        resourceStatus: DynamicObjectOrObjectArray,
-        isUpdated = false,
-    ): boolean {
+export const systemBoilerCustomStatusResourceHandler: CustomStatusResourceHandler =
+    (propKey, attribute, resourceStatus, isUpdated, device): boolean => {
         for (const temperatureStatus of resourceStatus as Record<
             string,
             unknown
@@ -231,14 +236,14 @@ export class SystemBoilerDevice extends ConnectBaseDevice {
                 )
             ) {
                 if (unit == "C") {
-                    this._setStatusAttr(attribute, unit);
+                    device._setStatusAttr(attribute, unit);
                 }
             } else if (_.toUpper(attribute[attribute.length - 1]) == unit) {
                 let _attributeValue = null;
                 let _propKey = null;
                 for (const temperatureMap of [
-                    this.profiles._PROFILE["hotWaterTemperatureInUnits"],
-                    this.profiles._PROFILE["roomTemperatureInUnits"],
+                    device.profiles._PROFILE["hotWaterTemperatureInUnits"],
+                    device.profiles._PROFILE["roomTemperatureInUnits"],
                 ]) {
                     if (_.includes(_.values(temperatureMap), attribute)) {
                         _propKey = _.findKey(
@@ -261,10 +266,40 @@ export class SystemBoilerDevice extends ConnectBaseDevice {
                         _propKey.slice(0, -1),
                         null,
                     );
-                this._setStatusAttr(attribute, _attributeValue);
+                device._setStatusAttr(attribute, _attributeValue);
             }
         }
         return true;
+    };
+
+export class SystemBoilerDevice extends ConnectBaseDevice {
+    constructor(
+        thinqApi: ThinQApi,
+        deviceId: string,
+        deviceType: string,
+        modelName: string,
+        alias: string,
+        reportable: boolean,
+        profile: Record<string, DynamicObjectOrStringArray>,
+        energyProfile?: Record<string, unknown>,
+    ) {
+        super(
+            thinqApi,
+            deviceId,
+            deviceType,
+            modelName,
+            alias,
+            reportable,
+            createSystemBoilerProfile(profile),
+            undefined,
+            undefined,
+            energyProfile,
+            systemBoilerCustomStatusResourceHandler,
+        );
+    }
+
+    get profiles(): ConnectDeviceProfile {
+        return this._profiles;
     }
 
     setBoilerOperationMode = async (

@@ -7,8 +7,11 @@ import _ from "lodash";
 import {
     ConnectBaseDevice,
     ConnectDeviceProfile,
+    ConnectDeviceProfileDefinition,
+    createConnectDeviceProfile,
     READABILITY,
     WRITABILITY,
+    CustomResourcePropertiesHandler,
 } from "./ConnectDevice";
 import {
     ResourceMap,
@@ -16,77 +19,62 @@ import {
     CustomProperties,
     LocationMap,
 } from "../types/Resources";
-import {
-    DynamicObjectOrObjectArray,
-    DynamicObjectOrStringArray,
-} from "../types/Devices";
+import { DynamicObjectOrStringArray } from "../types/Devices";
 import { ThinQApi, ThinQApiResponse } from "../ThinQAPI";
 
-export class VentilatorProfile extends ConnectDeviceProfile {
-    static _RESOURCE_MAP: ResourceMap = {
-        ventJobMode: "ventJobMode",
-        operation: "operation",
-        temperature: "temperature",
-        airQualitySensor: "airQualitySensor",
-        airFlow: "airFlow",
-        timer: "timer",
-        sleepTimer: "sleepTimer",
-    };
-    static _PROFILE: ProfileMap = {
-        ventJobMode: { currentJobMode: "currentJobMode" },
-        operation: { ventOperationMode: "ventilatorOperationMode" },
-        temperature: {
-            currentTemperature: "currentTemperature",
-            unit: "temperatureUnit",
-        },
-        airQualitySensor: {
-            PM1: "PM1",
-            PM2: "PM2",
-            PM10: "PM10",
-            CO2: "CO2",
-        },
-        airFlow: { windStrength: "windStrength" },
-        timer: {
-            absoluteHourToStop: "absoluteHourToStop",
-            absoluteMinuteToStop: "absoluteMinuteToStop",
-            absoluteHourToStart: "absoluteHourToStart",
-            absoluteMinuteToStart: "absoluteMinuteToStart",
-            relativeHourToStop: "relativeHourToStop",
-            relativeMinuteToStop: "relativeMinuteToStop",
-            relativeHourToStart: "relativeHourToStart",
-            relativeMinuteToStart: "relativeMinuteToStart",
-        },
-        sleepTimer: {
-            relativeHourToStop: "sleepTimerRelativeHourToStop",
-            relativeMinuteToStop: "sleepTimerRelativeMinuteToStop",
-        },
-    };
-    static _CUSTOM_PROPERTIES: CustomProperties = ["temperature"];
-    static _LOCATION_MAP: LocationMap = {};
+export const VENTILATOR_RESOURCE_MAP: ResourceMap = {
+    ventJobMode: "ventilatorJobMode",
+    operation: "operation",
+    temperature: "temperature",
+    airQualitySensor: "airQualitySensor",
+    airFlow: "airFlow",
+    timer: "timer",
+    sleepTimer: "sleepTimer",
+};
 
-    constructor(profile: Record<string, any>) {
-        super(
-            profile,
-            VentilatorProfile._RESOURCE_MAP,
-            VentilatorProfile._PROFILE,
-            VentilatorProfile._LOCATION_MAP,
-            VentilatorProfile._CUSTOM_PROPERTIES,
-        );
-    }
+export const VENTILATOR_PROFILE_MAP: ProfileMap = {
+    ventJobMode: { currentJobMode: "currentJobMode" },
+    operation: { ventOperationMode: "ventilatorOperationMode" },
+    temperature: {
+        currentTemperature: "currentTemperature",
+        unit: "temperatureUnit",
+    },
+    airQualitySensor: {
+        PM1: "pm1",
+        PM2: "pm2",
+        PM10: "pm10",
+        CO2: "co2",
+    },
+    airFlow: { windStrength: "windStrength" },
+    timer: {
+        absoluteHourToStop: "absoluteHourToStop",
+        absoluteMinuteToStop: "absoluteMinuteToStop",
+        absoluteHourToStart: "absoluteHourToStart",
+        absoluteMinuteToStart: "absoluteMinuteToStart",
+        relativeHourToStop: "relativeHourToStop",
+        relativeMinuteToStop: "relativeMinuteToStop",
+        relativeHourToStart: "relativeHourToStart",
+        relativeMinuteToStart: "relativeMinuteToStart",
+    },
+    sleepTimer: {
+        relativeHourToStop: "sleepTimerRelativeHourToStop",
+        relativeMinuteToStop: "sleepTimerRelativeMinuteToStop",
+    },
+};
 
-    _generateCustomResourceProperties(
-        resourceKey: string,
-        resourceProperty: DynamicObjectOrObjectArray,
-        props: Record<string, string>,
-    ): [string[], string[]] {
+export const VENTILATOR_CUSTOM_PROPERTIES: CustomProperties = ["temperature"];
+export const VENTILATOR_LOCATION_MAP: LocationMap = {};
+
+export const ventilatorCustomResourcePropertiesHandler: CustomResourcePropertiesHandler =
+    (resourceKey, resourceProperty, props, profile): [string[], string[]] => {
         const readableProps: string[] = [];
         const writableProps: string[] = [];
-        if (!_.includes(this._CUSTOM_PROPERTIES, resourceKey)) {
+        if (!_.includes(VENTILATOR_CUSTOM_PROPERTIES, resourceKey)) {
             return [readableProps, writableProps];
         }
 
         for (const [propKey, propAttr] of _.toPairs(props)) {
-            const prop = this._getProperties(
+            const prop = profile._getProperties(
                 resourceProperty as Record<string, DynamicObjectOrStringArray>,
                 propKey,
             );
@@ -97,12 +85,47 @@ export class VentilatorProfile extends ConnectDeviceProfile {
             if (prop[WRITABILITY] === true) {
                 writableProps.push(propAttr);
             }
-            this._setPropAttr(propAttr, prop);
+            profile._setPropAttr(propAttr, prop);
         }
 
         return [readableProps, writableProps];
+    };
+
+export const VENTILATOR_PROFILE_DEFINITION: ConnectDeviceProfileDefinition = {
+    resourceMap: VENTILATOR_RESOURCE_MAP,
+    profileMap: VENTILATOR_PROFILE_MAP,
+    locationMap: VENTILATOR_LOCATION_MAP,
+    customProperties: VENTILATOR_CUSTOM_PROPERTIES,
+    customResourcePropertiesHandler: ventilatorCustomResourcePropertiesHandler,
+};
+
+export class VentilatorProfile extends ConnectDeviceProfile {
+    static _RESOURCE_MAP: ResourceMap = VENTILATOR_RESOURCE_MAP;
+    static _PROFILE: ProfileMap = VENTILATOR_PROFILE_MAP;
+    static _CUSTOM_PROPERTIES: CustomProperties = VENTILATOR_CUSTOM_PROPERTIES;
+    static _LOCATION_MAP: LocationMap = VENTILATOR_LOCATION_MAP;
+
+    constructor(profile: Record<string, DynamicObjectOrStringArray>) {
+        super(
+            profile,
+            VENTILATOR_PROFILE_DEFINITION.resourceMap,
+            VENTILATOR_PROFILE_DEFINITION.profileMap,
+            VENTILATOR_PROFILE_DEFINITION.locationMap,
+            VENTILATOR_PROFILE_DEFINITION.customProperties,
+            VENTILATOR_PROFILE_DEFINITION.useExtensionProperty,
+            VENTILATOR_PROFILE_DEFINITION.useSubProfileOnly,
+            VENTILATOR_PROFILE_DEFINITION.locationName,
+            VENTILATOR_PROFILE_DEFINITION.useNotification,
+            VENTILATOR_PROFILE_DEFINITION.customResourcePropertiesHandler,
+        );
     }
 }
+
+export const createVentilatorProfile = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+): ConnectDeviceProfile => {
+    return createConnectDeviceProfile(profile, VENTILATOR_PROFILE_DEFINITION);
+};
 
 export class VentilatorDevice extends ConnectBaseDevice {
     static _CUSTOM_SET_PROPERTY_NAME = {
@@ -125,7 +148,7 @@ export class VentilatorDevice extends ConnectBaseDevice {
         modelName: string,
         alias: string,
         reportable: boolean,
-        profile: Record<string, any>,
+        profile: Record<string, DynamicObjectOrStringArray>,
         energyProfile?: Record<string, unknown>,
     ) {
         super(
@@ -135,7 +158,7 @@ export class VentilatorDevice extends ConnectBaseDevice {
             modelName,
             alias,
             reportable,
-            new VentilatorProfile(profile),
+            createVentilatorProfile(profile),
             VentilatorDevice._CUSTOM_SET_PROPERTY_NAME,
             undefined,
             energyProfile,

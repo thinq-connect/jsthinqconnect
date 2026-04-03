@@ -8,6 +8,7 @@ import {
     ConnectMainDevice,
     ConnectSubDevice,
     ConnectDeviceProfile,
+    ConnectDeviceProfileDefinition,
 } from "./ConnectDevice";
 import {
     ResourceMap,
@@ -15,86 +16,144 @@ import {
     CustomProperties,
     LocationMap,
 } from "../types/Resources";
-import { DynamicObjectOrObjectArray } from "../types/Devices";
+import {
+    DynamicObjectOrObjectArray,
+    DynamicObjectOrStringArray,
+} from "../types/Devices";
 import { ThinQApi, ThinQApiResponse } from "../ThinQAPI";
 
+export const WASHER_RESOURCE_MAP: ResourceMap = {};
+export const WASHER_PROFILE_MAP: ProfileMap = {};
+export const WASHER_LOCATION_MAP: LocationMap = { MAIN: "main", MINI: "mini" };
+export const WASHER_CUSTOM_PROPERTIES: CustomProperties = [];
+
+export const WASHER_PROFILE_DEFINITION: ConnectDeviceProfileDefinition = {
+    resourceMap: WASHER_RESOURCE_MAP,
+    profileMap: WASHER_PROFILE_MAP,
+    locationMap: WASHER_LOCATION_MAP,
+    customProperties: WASHER_CUSTOM_PROPERTIES,
+    useSubProfileOnly: true,
+};
+
+export const WASHER_SUB_RESOURCE_MAP: ResourceMap = {
+    runState: "runState",
+    operation: "operation",
+    remoteControlEnable: "remoteControlEnable",
+    timer: "timer",
+    detergent: "detergent",
+    cycle: "cycle",
+};
+
+export const WASHER_SUB_PROFILE_MAP: ProfileMap = {
+    runState: { currentState: "currentState" },
+    operation: { washerOperationMode: "washerOperationMode" },
+    remoteControlEnable: { remoteControlEnabled: "remoteControlEnabled" },
+    timer: {
+        remainHour: "remainHour",
+        remainMinute: "remainMinute",
+        totalHour: "totalHour",
+        totalMinute: "totalMinute",
+        relativeHourToStop: "relativeHourToStop",
+        relativeMinuteToStop: "relativeMinuteToStop",
+        relativeHourToStart: "relativeHourToStart",
+        relativeMinuteToStart: "relativeMinuteToStart",
+    },
+    detergent: { detergentSetting: "detergentSetting" },
+    cycle: { cycleCount: "cycleCount" },
+};
+export const WASHER_SUB_LOCATION_MAP: LocationMap = {};
+
+type WasherPropertyEntry = Record<string, unknown>;
+type WasherLocationProperties = Record<string, Record<string, string[]>>;
+
+const getWasherProfileEntries = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+): WasherPropertyEntry[] => {
+    const profileEntries = _.get(profile, "property", []);
+    return Array.isArray(profileEntries)
+        ? (profileEntries as WasherPropertyEntry[])
+        : [];
+};
+
+const getWasherLocationName = (
+    profileProperty: WasherPropertyEntry,
+): string | undefined => {
+    return _.get(profileProperty, "location.locationName") as
+        | string
+        | undefined;
+};
+
+const initializeWasherLocationProfiles = (
+    mainProfile: WasherProfile,
+    profile: Record<string, DynamicObjectOrStringArray>,
+): void => {
+    const locationProperties: WasherLocationProperties = {};
+    for (const profileProperty of getWasherProfileEntries(profile)) {
+        const locationName = getWasherLocationName(profileProperty);
+        if (!locationName || !(locationName in WASHER_LOCATION_MAP)) {
+            continue;
+        }
+        const attrKey = WASHER_LOCATION_MAP[locationName];
+        const subProfile = createWasherSubProfile(profile, locationName);
+        mainProfile[attrKey] = subProfile;
+        locationProperties[attrKey] = subProfile.properties;
+    }
+    mainProfile._locationProperties = locationProperties;
+    mainProfile.generatePropertyMap();
+};
+
+const getWasherLocationPropertyEntries = (
+    property:
+        | WasherPropertyEntry
+        | WasherPropertyEntry[]
+        | Record<string, unknown>[],
+    locationName: string | null,
+): WasherPropertyEntry[] => {
+    if (!Array.isArray(property)) {
+        return [property];
+    }
+    return property.filter(
+        (locationProperty) =>
+            getWasherLocationName(locationProperty) === locationName,
+    );
+};
+
 export class WasherProfile extends ConnectDeviceProfile {
-    static _RESOURCE_MAP: ResourceMap = {};
-    static _PROFILE: ProfileMap = {};
-    static _LOCATION_MAP: LocationMap = { MAIN: "main", MINI: "mini" };
-    static _CUSTOM_PROPERTIES: CustomProperties = [];
-    constructor(profile: Record<string, any>) {
+    static _RESOURCE_MAP: ResourceMap = WASHER_RESOURCE_MAP;
+    static _PROFILE: ProfileMap = WASHER_PROFILE_MAP;
+    static _LOCATION_MAP: LocationMap = WASHER_LOCATION_MAP;
+    static _CUSTOM_PROPERTIES: CustomProperties = WASHER_CUSTOM_PROPERTIES;
+    constructor(profile: Record<string, DynamicObjectOrStringArray>) {
         super(
             profile,
-            WasherProfile._RESOURCE_MAP,
-            WasherProfile._PROFILE,
-            WasherProfile._LOCATION_MAP,
-            WasherProfile._CUSTOM_PROPERTIES,
-            false,
-            true,
+            WASHER_PROFILE_DEFINITION.resourceMap,
+            WASHER_PROFILE_DEFINITION.profileMap,
+            WASHER_PROFILE_DEFINITION.locationMap,
+            WASHER_PROFILE_DEFINITION.customProperties,
+            WASHER_PROFILE_DEFINITION.useExtensionProperty,
+            WASHER_PROFILE_DEFINITION.useSubProfileOnly,
         );
-        const _locationProperties: Record<
-            string,
-            Record<string, string[]>
-        > = {};
-        for (const profileProperty of _.get(profile, "property", [])) {
-            const locationName = _.get(
-                profileProperty,
-                "location.locationName",
-            );
-            if (locationName in WasherProfile._LOCATION_MAP) {
-                const attrKey = WasherProfile._LOCATION_MAP[locationName];
-                const _subProfile = new WasherSubProfile(profile, locationName);
-                this[attrKey] = _subProfile;
-                _locationProperties[attrKey] = _subProfile.properties;
-            }
-        }
-        this._locationProperties = _locationProperties;
-        this.generatePropertyMap();
+        initializeWasherLocationProfiles(this, profile);
     }
 }
 
 export class WasherSubProfile extends ConnectDeviceProfile {
-    static _RESOURCE_MAP: ResourceMap = {
-        runState: "runState",
-        operation: "operation",
-        remoteControlEnable: "remoteControlEnable",
-        timer: "timer",
-        detergent: "detergent",
-        cycle: "cycle",
-    };
-
-    static _PROFILE: ProfileMap = {
-        runState: { currentState: "currentState" },
-        operation: { washerOperationMode: "washerOperationMode" },
-        remoteControlEnable: { remoteControlEnabled: "remoteControlEnabled" },
-        timer: {
-            remainHour: "remainHour",
-            remainMinute: "remainMinute",
-            totalHour: "totalHour",
-            totalMinute: "totalMinute",
-            relativeHourToStop: "relativeHourToStop",
-            relativeMinuteToStop: "relativeMinuteToStop",
-            relativeHourToStart: "relativeHourToStart",
-            relativeMinuteToStart: "relativeMinuteToStart",
-        },
-        detergent: { detergentSetting: "detergentSetting" },
-        cycle: { cycleCount: "cycleCount" },
-    };
+    static _RESOURCE_MAP: ResourceMap = WASHER_SUB_RESOURCE_MAP;
+    static _PROFILE: ProfileMap = WASHER_SUB_PROFILE_MAP;
     static _CUSTOM_PROPERTIES: CustomProperties = [];
-    static _LOCATION_MAP: LocationMap = {};
+    static _LOCATION_MAP: LocationMap = WASHER_SUB_LOCATION_MAP;
 
     constructor(
-        profile: Record<string, any>,
+        profile: Record<string, DynamicObjectOrStringArray>,
         locationName: string | null = null,
         useNotification = false,
     ) {
         super(
             profile,
-            WasherSubProfile._RESOURCE_MAP,
-            WasherSubProfile._PROFILE,
-            WasherSubProfile._LOCATION_MAP,
-            WasherSubProfile._CUSTOM_PROPERTIES,
+            WASHER_SUB_RESOURCE_MAP,
+            WASHER_SUB_PROFILE_MAP,
+            WASHER_SUB_LOCATION_MAP,
+            WASHER_CUSTOM_PROPERTIES,
             false,
             false,
             locationName,
@@ -103,22 +162,31 @@ export class WasherSubProfile extends ConnectDeviceProfile {
         this._locationName = locationName;
     }
 
-    generateProperties(property: Record<string, unknown>[]): void {
-        if (Array.isArray(property)) {
-            for (const locationProperty of property) {
-                if (
-                    _.get(locationProperty, "location.locationName") !==
-                    this._locationName
-                ) {
-                    continue;
-                }
-                super.generateProperties(locationProperty);
-            }
-        } else {
-            super.generateProperties(property);
+    generateProperties(
+        property: WasherPropertyEntry[] | WasherPropertyEntry,
+    ): void {
+        for (const locationProperty of getWasherLocationPropertyEntries(
+            property,
+            this._locationName,
+        )) {
+            super.generateProperties(locationProperty);
         }
     }
 }
+
+export const createWasherSubProfile = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+    locationName: string,
+    useNotification = false,
+): ConnectDeviceProfile => {
+    return new WasherSubProfile(profile, locationName, useNotification);
+};
+
+export const createWasherProfile = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+): ConnectDeviceProfile => {
+    return new WasherProfile(profile);
+};
 
 export class WasherSubDevice extends ConnectSubDevice {
     constructor(
@@ -233,7 +301,7 @@ export class WasherDevice extends ConnectMainDevice {
         modelName: string,
         alias: string,
         reportable: boolean,
-        profile: Record<string, any>,
+        profile: Record<string, DynamicObjectOrStringArray>,
         energyProfile?: Record<string, unknown>,
     ) {
         super(
@@ -243,7 +311,7 @@ export class WasherDevice extends ConnectMainDevice {
             modelName,
             alias,
             reportable,
-            new WasherProfile(profile),
+            createWasherProfile(profile),
             WasherSubDevice,
             energyProfile,
         );
@@ -254,6 +322,6 @@ export class WasherDevice extends ConnectMainDevice {
     }
 
     getSubDevice(locationName: string): ConnectSubDevice | null {
-        return super.getSubDevice(locationName);
+        return super.getSubDevice(locationName) as ConnectSubDevice | null;
     }
 }

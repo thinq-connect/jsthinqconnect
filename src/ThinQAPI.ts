@@ -6,7 +6,8 @@
 import * as _ from "lodash";
 import { v4 as uuidv4 } from "uuid";
 import * as base64 from "urlsafe-base64";
-import axios, { Axios } from "axios";
+import axios from "axios";
+import type { AxiosInstance, AxiosRequestConfig } from "axios";
 import { API_KEY } from "./Const";
 import { getRegionFromCountry } from "./CountryPreset";
 
@@ -165,16 +166,14 @@ export class ThinQApi {
         payload = payload || {};
         const generatedHeaders = this._generateHeaders(headers);
         const endpoint_url = this._getUrlFromEndpoint(endpoint);
-        console.log(`method: ${method}`);
-        console.log(`endpoint: ${endpoint_url}`);
-        console.log(`header: ${JSON.stringify(generatedHeaders, null, 2)}`);
-        console.log(`payload: ${JSON.stringify(payload, null, 2)}`);
-        const client: Axios = axios.create({
+        const client: AxiosInstance = axios.create({
             headers: generatedHeaders,
         });
         try {
             let response;
-            const config = { timeout: timeout };
+            const config: AxiosRequestConfig<Record<string, unknown>> = {
+                timeout: timeout,
+            };
             if (method.toLowerCase() === "get") {
                 response = await client.get(endpoint_url, config);
             } else if (method.toLowerCase() === "post") {
@@ -182,13 +181,15 @@ export class ThinQApi {
             } else if (method.toLowerCase() === "put") {
                 response = await client.put(endpoint_url, payload, config);
             } else if (method.toLowerCase() === "delete") {
-                response = await client.delete(endpoint_url, config);
+                response = await client.delete(endpoint_url, {
+                    ...config,
+                    data: payload,
+                });
             } else {
                 throw new Error(`Unsupported method: ${method}`);
             }
             return new ThinQApiResponse(true, response.status, response.data);
         } catch (error: unknown) {
-            console.log(`Error: ${error}`);
             if (axios.isAxiosError(error)) {
                 const status = error.response?.status ?? 500;
                 const data = error.response?.data ?? {

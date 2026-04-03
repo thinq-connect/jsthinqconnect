@@ -7,8 +7,14 @@ import _ from "lodash";
 import {
     ConnectBaseDevice,
     ConnectDeviceProfile,
+    ConnectDeviceProfileDefinition,
     READABILITY,
     WRITABILITY,
+    createConnectDeviceProfile,
+    CustomResourcePropertiesHandler,
+    CustomAttributePayloadHandler,
+    CustomAttributeWritableHandler,
+    CustomStatusResourceHandler,
 } from "./ConnectDevice";
 import {
     ResourceMap,
@@ -17,108 +23,105 @@ import {
     LocationMap,
     CustomPropertyMappingTable,
 } from "../types/Resources";
-import {
-    DynamicObjectOrObjectArray,
-    DynamicObjectOrStringArray,
-    AttributePayload,
-} from "../types/Devices";
+import { DynamicObjectOrStringArray, AttributePayload } from "../types/Devices";
 import { ThinQApi, ThinQApiResponse } from "../ThinQAPI";
 
-export class AirConditionerProfile extends ConnectDeviceProfile {
-    static _RESOURCE_MAP: ResourceMap = {
-        airConJobMode: "airConJobMode",
-        operation: "operation",
-        temperatureInUnits: "temperature",
-        twoSetTemperature: "twoSetTemperature",
-        twoSetTemperatureInUnits: "twoSetTemperature",
-        timer: "timer",
-        sleepTimer: "sleepTimer",
-        powerSave: "powerSave",
-        airFlow: "airFlow",
-        airQualitySensor: "airQualitySensor",
-        filterInfo: "filterInfo",
-        display: "display",
-        windDirection: "windDirection",
-    };
-    static _PROFILE: ProfileMap = {
-        airConJobMode: { currentJobMode: "currentJobMode" },
-        operation: {
-            airConOperationMode: "airConOperationMode",
-            airCleanOperationMode: "airCleanOperationMode",
-        },
-        temperatureInUnits: {
-            currentTemperatureC: "currentTemperatureC",
-            currentTemperatureF: "currentTemperatureF",
-            targetTemperatureC: "targetTemperatureC",
-            targetTemperatureF: "targetTemperatureF",
-            minTargetTemperatureC: "minTargetTemperatureC",
-            minTargetTemperatureF: "minTargetTemperatureF",
-            maxTargetTemperatureC: "maxTargetTemperatureC",
-            maxTargetTemperatureF: "maxTargetTemperatureF",
-            heatTargetTemperatureC: "heatTargetTemperatureC",
-            heatTargetTemperatureF: "heatTargetTemperatureF",
-            coolTargetTemperatureC: "coolTargetTemperatureC",
-            coolTargetTemperatureF: "coolTargetTemperatureF",
-            autoTargetTemperatureC: "autoTargetTemperatureC",
-            autoTargetTemperatureF: "autoTargetTemperatureF",
-            unit: "temperatureUnit",
-        },
-        twoSetTemperature: {
-            twoSetEnabled: "twoSetEnabled",
-        },
-        twoSetTemperatureInUnits: {
-            heatTargetTemperatureC: "twoSetHeatTargetTemperatureC",
-            heatTargetTemperatureF: "twoSetHeatTargetTemperatureF",
-            coolTargetTemperatureC: "twoSetCoolTargetTemperatureC",
-            coolTargetTemperatureF: "twoSetCoolTargetTemperatureF",
-            unit: "twoSetTemperatureUnit",
-        },
-        timer: {
-            relativeHourToStart: "relativeHourToStart",
-            relativeMinuteToStart: "relativeMinuteToStart",
-            relativeHourToStop: "relativeHourToStop",
-            relativeMinuteToStop: "relativeMinuteToStop",
-            absoluteHourToStart: "absoluteHourToStart",
-            absoluteMinuteToStart: "absoluteMinuteToStart",
-            absoluteHourToStop: "absoluteHourToStop",
-            absoluteMinuteToStop: "absoluteMinuteToStop",
-        },
-        sleepTimer: {
-            relativeHourToStop: "sleepTimerRelativeHourToStop",
-            relativeMinuteToStop: "sleepTimerRelativeMinuteToStop",
-        },
-        powerSave: { powerSaveEnabled: "powerSaveEnabled" },
-        airFlow: { windStrength: "windStrength", windStep: "windStep" },
-        airQualitySensor: {
-            PM1: "pm1",
-            PM2: "pm2",
-            PM10: "pm10",
-            odor: "odor",
-            odorLevel: "odorLevel",
-            humidity: "humidity",
-            totalPollution: "totalPollution",
-            totalPollutionLevel: "totalPollutionLevel",
-            monitoringEnabled: "monitoringEnabled",
-        },
-        filterInfo: {
-            usedTime: "usedTime",
-            filterLifetime: "filterLifetime",
-            filterRemainPercent: "filterRemainPercent",
-        },
-        display: { light: "displayLight" },
-        windDirection: {
-            rotateUpDown: "windRotateUpDown",
-            rotateLeftRight: "windRotateLeftRight",
-        },
-    };
-    static _CUSTOM_PROPERTIES: CustomProperties = [
-        "twoSetTemperature",
-        "temperatureInUnits",
-        "twoSetTemperatureInUnits",
-    ];
-    static _LOCATION_MAP: LocationMap = {};
+export const AIR_CONDITIONER_RESOURCE_MAP: ResourceMap = {
+    airConJobMode: "airConJobMode",
+    operation: "operation",
+    temperatureInUnits: "temperature",
+    twoSetTemperature: "twoSetTemperature",
+    twoSetTemperatureInUnits: "twoSetTemperature",
+    timer: "timer",
+    sleepTimer: "sleepTimer",
+    powerSave: "powerSave",
+    airFlow: "airFlow",
+    airQualitySensor: "airQualitySensor",
+    filterInfo: "filterInfo",
+    display: "display",
+    windDirection: "windDirection",
+};
 
-    static _CUSTOM_PROPERTY_MAPPING_TABLE: CustomPropertyMappingTable = {
+export const AIR_CONDITIONER_PROFILE_MAP: ProfileMap = {
+    airConJobMode: { currentJobMode: "currentJobMode" },
+    operation: {
+        airConOperationMode: "airConOperationMode",
+        airCleanOperationMode: "airCleanOperationMode",
+    },
+    temperatureInUnits: {
+        currentTemperatureC: "currentTemperatureC",
+        currentTemperatureF: "currentTemperatureF",
+        targetTemperatureC: "targetTemperatureC",
+        targetTemperatureF: "targetTemperatureF",
+        minTargetTemperatureC: "minTargetTemperatureC",
+        minTargetTemperatureF: "minTargetTemperatureF",
+        maxTargetTemperatureC: "maxTargetTemperatureC",
+        maxTargetTemperatureF: "maxTargetTemperatureF",
+        heatTargetTemperatureC: "heatTargetTemperatureC",
+        heatTargetTemperatureF: "heatTargetTemperatureF",
+        coolTargetTemperatureC: "coolTargetTemperatureC",
+        coolTargetTemperatureF: "coolTargetTemperatureF",
+        autoTargetTemperatureC: "autoTargetTemperatureC",
+        autoTargetTemperatureF: "autoTargetTemperatureF",
+        unit: "temperatureUnit",
+    },
+    twoSetTemperature: {
+        twoSetEnabled: "twoSetEnabled",
+    },
+    twoSetTemperatureInUnits: {
+        heatTargetTemperatureC: "twoSetHeatTargetTemperatureC",
+        heatTargetTemperatureF: "twoSetHeatTargetTemperatureF",
+        coolTargetTemperatureC: "twoSetCoolTargetTemperatureC",
+        coolTargetTemperatureF: "twoSetCoolTargetTemperatureF",
+        unit: "twoSetTemperatureUnit",
+    },
+    timer: {
+        relativeHourToStart: "relativeHourToStart",
+        relativeMinuteToStart: "relativeMinuteToStart",
+        relativeHourToStop: "relativeHourToStop",
+        relativeMinuteToStop: "relativeMinuteToStop",
+        absoluteHourToStart: "absoluteHourToStart",
+        absoluteMinuteToStart: "absoluteMinuteToStart",
+        absoluteHourToStop: "absoluteHourToStop",
+        absoluteMinuteToStop: "absoluteMinuteToStop",
+    },
+    sleepTimer: {
+        relativeHourToStop: "sleepTimerRelativeHourToStop",
+        relativeMinuteToStop: "sleepTimerRelativeMinuteToStop",
+    },
+    powerSave: { powerSaveEnabled: "powerSaveEnabled" },
+    airFlow: { windStrength: "windStrength", windStep: "windStep" },
+    airQualitySensor: {
+        PM1: "pm1",
+        PM2: "pm2",
+        PM10: "pm10",
+        odor: "odor",
+        odorLevel: "odorLevel",
+        humidity: "humidity",
+        totalPollution: "totalPollution",
+        totalPollutionLevel: "totalPollutionLevel",
+        monitoringEnabled: "monitoringEnabled",
+    },
+    filterInfo: {
+        usedTime: "usedTime",
+        filterLifetime: "filterLifetime",
+        filterRemainPercent: "filterRemainPercent",
+    },
+    display: { light: "displayLight" },
+    windDirection: {
+        rotateUpDown: "windRotateUpDown",
+        rotateLeftRight: "windRotateLeftRight",
+    },
+};
+
+export const AIR_CONDITIONER_CUSTOM_PROPERTIES: CustomProperties = [
+    "twoSetTemperature",
+    "temperatureInUnits",
+    "twoSetTemperatureInUnits",
+];
+export const AIR_CONDITIONER_LOCATION_MAP: LocationMap = {};
+export const AIR_CONDITIONER_CUSTOM_PROPERTY_MAPPING_TABLE: CustomPropertyMappingTable =
+    {
         currentTemperatureC: "currentTemperature",
         currentTemperatureF: "currentTemperature",
         targetTemperatureC: "targetTemperature",
@@ -139,34 +142,24 @@ export class AirConditionerProfile extends ConnectDeviceProfile {
         twoSetCoolTargetTemperatureF: "coolTargetTemperature",
     };
 
-    constructor(profile: Record<string, any>) {
-        super(
-            profile,
-            AirConditionerProfile._RESOURCE_MAP,
-            AirConditionerProfile._PROFILE,
-            AirConditionerProfile._LOCATION_MAP,
-            AirConditionerProfile._CUSTOM_PROPERTIES,
-        );
-    }
+export const airConditionerCustomAttributeWritableHandler: CustomAttributeWritableHandler =
+    (propAttr, profile): boolean | null => {
+        if (
+            _.includes(["temperatureUnit", "twoSetTemperatureUnit"], propAttr)
+        ) {
+            return true;
+        }
+        const value = profile._getPropAttr(propAttr)[WRITABILITY];
+        return typeof value === "boolean" ? value : null;
+    };
 
-    checkAttributeWritable(propAttr: string): boolean {
-        return (
-            _.includes(
-                ["temperatureUnit", "twoSetTemperatureUnit"],
-                propAttr,
-            ) || (this._getPropAttr(propAttr)[WRITABILITY] as boolean)
-        );
-    }
-
-    _getAttributePayload(
-        attribute: string,
-        value: string | number | boolean,
-    ): AttributePayload | undefined {
-        for (const [resource, props] of _.toPairs(this._PROFILE)) {
+export const airConditionerCustomAttributePayloadHandler: CustomAttributePayloadHandler =
+    (attribute, value, profile): AttributePayload | undefined => {
+        for (const [resource, props] of _.toPairs(profile.getProfile())) {
             for (const [propKey, propAttr] of _.toPairs(props)) {
                 if (propAttr === attribute) {
                     return !_.has(
-                        AirConditionerProfile._CUSTOM_PROPERTY_MAPPING_TABLE,
+                        AIR_CONDITIONER_CUSTOM_PROPERTY_MAPPING_TABLE,
                         attribute,
                     )
                         ? {
@@ -176,8 +169,7 @@ export class AirConditionerProfile extends ConnectDeviceProfile {
                           }
                         : {
                               [resource]: {
-                                  [AirConditionerProfile
-                                      ._CUSTOM_PROPERTY_MAPPING_TABLE[
+                                  [AIR_CONDITIONER_CUSTOM_PROPERTY_MAPPING_TABLE[
                                       attribute
                                   ]]: value,
                               },
@@ -185,21 +177,19 @@ export class AirConditionerProfile extends ConnectDeviceProfile {
                 }
             }
         }
-    }
-    _generateCustomResourceProperties(
-        resourceKey: string,
-        resourceProperty: DynamicObjectOrObjectArray,
-        props: Record<string, string>,
-    ): [string[], string[]] {
+    };
+
+export const airConditionerCustomResourcePropertiesHandler: CustomResourcePropertiesHandler =
+    (resourceKey, resourceProperty, props, profile): [string[], string[]] => {
         const readableProps: string[] = [];
         const writableProps: string[] = [];
-        if (!_.includes(this._CUSTOM_PROPERTIES, resourceKey)) {
+        if (!_.includes(AIR_CONDITIONER_CUSTOM_PROPERTIES, resourceKey)) {
             return [readableProps, writableProps];
         }
 
-        if (resourceKey == "twoSetTemperature") {
+        if (resourceKey === "twoSetTemperature") {
             for (const [propKey, propAttr] of _.toPairs(props)) {
-                const prop = this._getProperties(
+                const prop = profile._getProperties(
                     resourceProperty as Record<
                         string,
                         DynamicObjectOrStringArray
@@ -212,7 +202,7 @@ export class AirConditionerProfile extends ConnectDeviceProfile {
                 if (prop[WRITABILITY] === true) {
                     writableProps.push(propAttr);
                 }
-                this._setPropAttr(propAttr, prop);
+                profile._setPropAttr(propAttr, prop);
             }
             return [readableProps, writableProps];
         }
@@ -225,8 +215,8 @@ export class AirConditionerProfile extends ConnectDeviceProfile {
         for (const temperatures of temperatureArray) {
             const unit = String(temperatures["unit"]);
             for (const [propKey, propAttr] of _.toPairs(props)) {
-                if (propKey[propKey.length - 1] != unit) continue;
-                const prop = this._getProperties(
+                if (propKey[propKey.length - 1] !== unit) continue;
+                const prop = profile._getProperties(
                     temperatures as Record<string, DynamicObjectOrStringArray>,
                     propKey.slice(0, -1),
                 );
@@ -236,73 +226,95 @@ export class AirConditionerProfile extends ConnectDeviceProfile {
                 if (prop[WRITABILITY] === true) {
                     writableProps.push(propAttr);
                 }
-                this._setPropAttr(propAttr, prop);
+                profile._setPropAttr(propAttr, prop);
             }
             units.push(unit);
         }
 
         const propAttr = props["unit"];
-        const prop = this._getReadOnlyEnumProperty(units);
+        const prop = profile._getReadOnlyEnumProperty(units);
         if (prop[READABILITY] === true) {
             readableProps.push(propAttr);
         }
         if (prop[WRITABILITY] === true) {
             writableProps.push(propAttr);
         }
-        this._setPropAttr(propAttr, prop);
+        profile._setPropAttr(propAttr, prop);
 
         return [readableProps, writableProps];
+    };
+
+export const AIR_CONDITIONER_PROFILE_DEFINITION: ConnectDeviceProfileDefinition =
+    {
+        resourceMap: AIR_CONDITIONER_RESOURCE_MAP,
+        profileMap: AIR_CONDITIONER_PROFILE_MAP,
+        locationMap: AIR_CONDITIONER_LOCATION_MAP,
+        customProperties: AIR_CONDITIONER_CUSTOM_PROPERTIES,
+        customResourcePropertiesHandler:
+            airConditionerCustomResourcePropertiesHandler,
+        customAttributePayloadHandler:
+            airConditionerCustomAttributePayloadHandler,
+        customAttributeWritableHandler:
+            airConditionerCustomAttributeWritableHandler,
+    };
+
+export class AirConditionerProfile extends ConnectDeviceProfile {
+    static _RESOURCE_MAP: ResourceMap = AIR_CONDITIONER_RESOURCE_MAP;
+    static _PROFILE: ProfileMap = AIR_CONDITIONER_PROFILE_MAP;
+    static _CUSTOM_PROPERTIES: CustomProperties =
+        AIR_CONDITIONER_CUSTOM_PROPERTIES;
+    static _LOCATION_MAP: LocationMap = AIR_CONDITIONER_LOCATION_MAP;
+    static _CUSTOM_PROPERTY_MAPPING_TABLE: CustomPropertyMappingTable =
+        AIR_CONDITIONER_CUSTOM_PROPERTY_MAPPING_TABLE;
+
+    constructor(profile: Record<string, DynamicObjectOrStringArray>) {
+        super(
+            profile,
+            AIR_CONDITIONER_PROFILE_DEFINITION.resourceMap,
+            getAirConditionerProfileMap(profile),
+            AIR_CONDITIONER_PROFILE_DEFINITION.locationMap,
+            AIR_CONDITIONER_PROFILE_DEFINITION.customProperties,
+            AIR_CONDITIONER_PROFILE_DEFINITION.useExtensionProperty,
+            AIR_CONDITIONER_PROFILE_DEFINITION.useSubProfileOnly,
+            AIR_CONDITIONER_PROFILE_DEFINITION.locationName,
+            AIR_CONDITIONER_PROFILE_DEFINITION.useNotification,
+            AIR_CONDITIONER_PROFILE_DEFINITION.customResourcePropertiesHandler,
+            AIR_CONDITIONER_PROFILE_DEFINITION.customAttributePayloadHandler,
+            AIR_CONDITIONER_PROFILE_DEFINITION.customAttributeWritableHandler,
+        );
     }
 }
 
-export class AirConditionerDevice extends ConnectBaseDevice {
-    static _CUSTOM_SET_PROPERTY_NAME = {
-        relativeHourToStart: "relativeTimeToStart",
-        relativeMinuteToStart: "relativeTimeToStart",
-        relativeHourToStop: "relativeTimeToStop",
-        relativeMinuteToStop: "relativeTimeToStop",
-        absoluteHourToStart: "absoluteTimeToStart",
-        absoluteMinuteToStart: "absoluteTimeToStart",
-        absoluteHourToStop: "absoluteTimeToStop",
-        absoluteMinuteToStop: "absoluteTimeToStop",
-        sleepTimerRelativeHourToStop: "sleepTimerRelativeTimeToStop",
-        sleepTimerRelativeMinuteToStop: "sleepTimerRelativeTimeToStop",
-    };
-
-    constructor(
-        thinqApi: ThinQApi,
-        deviceId: string,
-        deviceType: string,
-        modelName: string,
-        alias: string,
-        reportable: boolean,
-        profile: Record<string, any>,
-        energyProfile?: Record<string, unknown>,
-    ) {
-        super(
-            thinqApi,
-            deviceId,
-            deviceType,
-            modelName,
-            alias,
-            reportable,
-            new AirConditionerProfile(profile),
-            AirConditionerDevice._CUSTOM_SET_PROPERTY_NAME,
-            undefined,
-            energyProfile,
+const getAirConditionerProfileMap = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+): ProfileMap => {
+    const windStrengthKey =
+        ConnectDeviceProfile.prototype._getPreferredPropertyKey(
+            profile,
+            "airFlow",
+            ["windStrengthDetail", "windStrength"],
         );
-    }
 
-    get profiles(): ConnectDeviceProfile {
-        return this._profiles;
-    }
+    return {
+        ...AIR_CONDITIONER_PROFILE_MAP,
+        airFlow: {
+            [windStrengthKey]: "windStrength",
+            windStep: "windStep",
+        },
+    };
+};
 
-    _setCustomResources(
-        propKey: string,
-        attribute: string,
-        resourceStatus: DynamicObjectOrObjectArray,
-        isUpdated = false,
-    ): boolean {
+export const createAirConditionerProfile = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+): ConnectDeviceProfile => {
+    return createConnectDeviceProfile(profile, {
+        ...AIR_CONDITIONER_PROFILE_DEFINITION,
+        profileMap: getAirConditionerProfileMap(profile),
+    });
+};
+
+export const airConditionerCustomStatusResourceHandler: CustomStatusResourceHandler =
+    (propKey, attribute, resourceStatus, isUpdated, device): boolean => {
         if (attribute == "twoSetEnabled") return false;
         for (const temperatureStatus of resourceStatus as Record<
             string,
@@ -317,12 +329,12 @@ export class AirConditionerDevice extends ConnectBaseDevice {
             ) {
                 const _attributeValue = unit;
                 if (unit == "C")
-                    this._setStatusAttr(attribute, _attributeValue);
+                    device._setStatusAttr(attribute, _attributeValue);
             } else if (attribute[attribute.length - 1] == unit) {
                 const temperatureMap =
-                    this.profiles._PROFILE["temperatureInUnits"];
+                    device.profiles._PROFILE["temperatureInUnits"];
                 const twoSetTemperatureMap =
-                    this.profiles._PROFILE["twoSetTemperatureInUnits"];
+                    device.profiles._PROFILE["twoSetTemperatureInUnits"];
 
                 let _attributeValue = null;
                 let _propKey = null;
@@ -347,11 +359,55 @@ export class AirConditionerDevice extends ConnectBaseDevice {
                     _attributeValue = _.get(
                         temperatureStatus,
                         _propKey.slice(0, -1),
+                        null,
                     );
-                this._setStatusAttr(attribute, _attributeValue);
+                device._setStatusAttr(attribute, _attributeValue);
             }
         }
         return true;
+    };
+
+export class AirConditionerDevice extends ConnectBaseDevice {
+    static _CUSTOM_SET_PROPERTY_NAME = {
+        relativeHourToStart: "relativeTimeToStart",
+        relativeMinuteToStart: "relativeTimeToStart",
+        relativeHourToStop: "relativeTimeToStop",
+        relativeMinuteToStop: "relativeTimeToStop",
+        absoluteHourToStart: "absoluteTimeToStart",
+        absoluteMinuteToStart: "absoluteTimeToStart",
+        absoluteHourToStop: "absoluteTimeToStop",
+        absoluteMinuteToStop: "absoluteTimeToStop",
+        sleepTimerRelativeHourToStop: "sleepTimerRelativeTimeToStop",
+        sleepTimerRelativeMinuteToStop: "sleepTimerRelativeTimeToStop",
+    };
+
+    constructor(
+        thinqApi: ThinQApi,
+        deviceId: string,
+        deviceType: string,
+        modelName: string,
+        alias: string,
+        reportable: boolean,
+        profile: Record<string, DynamicObjectOrStringArray>,
+        energyProfile?: Record<string, unknown>,
+    ) {
+        super(
+            thinqApi,
+            deviceId,
+            deviceType,
+            modelName,
+            alias,
+            reportable,
+            createAirConditionerProfile(profile),
+            AirConditionerDevice._CUSTOM_SET_PROPERTY_NAME,
+            undefined,
+            energyProfile,
+            airConditionerCustomStatusResourceHandler,
+        );
+    }
+
+    get profiles(): ConnectDeviceProfile {
+        return this._profiles;
     }
 
     setCurrentJobMode = async (

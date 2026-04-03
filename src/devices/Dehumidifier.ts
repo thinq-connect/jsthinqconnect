@@ -3,36 +3,62 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import _ from "lodash";
-import { ConnectBaseDevice, ConnectDeviceProfile } from "./ConnectDevice";
+import {
+    ConnectBaseDevice,
+    ConnectDeviceProfile,
+    ConnectDeviceProfileDefinition,
+    createConnectDeviceProfile,
+} from "./ConnectDevice";
 import {
     ResourceMap,
     ProfileMap,
     CustomProperties,
     LocationMap,
 } from "../types/Resources";
+import { DynamicObjectOrStringArray } from "../types/Devices";
 import { ThinQApi, ThinQApiResponse } from "../ThinQAPI";
 
-export class DehumidifierProfile extends ConnectDeviceProfile {
-    static _RESOURCE_MAP: ResourceMap = {
-        operation: "operation",
-        dehumidifierJobMode: "dehumidifierJobMode",
-        humidity: "humidity",
-        airFlow: "airFlow",
-    };
-    static _PROFILE: ProfileMap = {
-        operation: { dehumidifierOperationMode: "dehumidifierOperationMode" },
-        dehumidifierJobMode: { currentJobMode: "currentJobMode" },
-        humidity: {
-            currentHumidity: "currentHumidity",
-            targetHumidity: "targetHumidity",
-        },
-        airFlow: { windStrength: "windStrength" },
-    };
-    static _CUSTOM_PROPERTIES: CustomProperties = [];
-    static _LOCATION_MAP: LocationMap = {};
+export const DEHUMIDIFIER_RESOURCE_MAP: ResourceMap = {
+    operation: "operation",
+    dehumidifierJobMode: "dehumidifierJobMode",
+    humidity: "humidity",
+    airFlow: "airFlow",
+};
 
-    constructor(profile: Record<string, any>) {
+export const DEHUMIDIFIER_PROFILE_MAP: ProfileMap = {
+    operation: { dehumidifierOperationMode: "dehumidifierOperationMode" },
+    dehumidifierJobMode: { currentJobMode: "currentJobMode" },
+    humidity: {
+        currentHumidity: "currentHumidity",
+        targetHumidity: "targetHumidity",
+    },
+    airFlow: { windStrengthLevel: "windStrength" },
+};
+
+export const DEHUMIDIFIER_CUSTOM_PROPERTIES: CustomProperties = [];
+export const DEHUMIDIFIER_LOCATION_MAP: LocationMap = {};
+
+export const DEHUMIDIFIER_PROFILE_DEFINITION: ConnectDeviceProfileDefinition = {
+    resourceMap: DEHUMIDIFIER_RESOURCE_MAP,
+    profileMap: DEHUMIDIFIER_PROFILE_MAP,
+    locationMap: DEHUMIDIFIER_LOCATION_MAP,
+    customProperties: DEHUMIDIFIER_CUSTOM_PROPERTIES,
+};
+
+export const createDehumidifierProfile = (
+    profile: Record<string, DynamicObjectOrStringArray>,
+): ConnectDeviceProfile => {
+    return createConnectDeviceProfile(profile, DEHUMIDIFIER_PROFILE_DEFINITION);
+};
+
+export class DehumidifierProfile extends ConnectDeviceProfile {
+    static _RESOURCE_MAP: ResourceMap = DEHUMIDIFIER_RESOURCE_MAP;
+    static _PROFILE: ProfileMap = DEHUMIDIFIER_PROFILE_MAP;
+    static _CUSTOM_PROPERTIES: CustomProperties =
+        DEHUMIDIFIER_CUSTOM_PROPERTIES;
+    static _LOCATION_MAP: LocationMap = DEHUMIDIFIER_LOCATION_MAP;
+
+    constructor(profile: Record<string, DynamicObjectOrStringArray>) {
         super(
             profile,
             DehumidifierProfile._RESOURCE_MAP,
@@ -51,7 +77,7 @@ export class DehumidifierDevice extends ConnectBaseDevice {
         modelName: string,
         alias: string,
         reportable: boolean,
-        profile: Record<string, any>,
+        profile: Record<string, DynamicObjectOrStringArray>,
         energyProfile?: Record<string, unknown>,
     ) {
         super(
@@ -61,7 +87,7 @@ export class DehumidifierDevice extends ConnectBaseDevice {
             modelName,
             alias,
             reportable,
-            new DehumidifierProfile(profile),
+            createDehumidifierProfile(profile),
             undefined,
             undefined,
             energyProfile,
