@@ -1,5 +1,9 @@
 # Release Notes
 
+## 0.9.10-beta (2026-06-17)
+### Security
+* Update packages to reduce exposure from recent CVE advisories
+
 ## 0.9.9-beta (2026-04-03)
 ### Features
 * Add **particulate matter level** properties (air_purifier)
